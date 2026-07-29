@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from './contexts/AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import BottomNav from './components/BottomNav';
@@ -40,15 +40,14 @@ function RoleGate({ children }) {
   return children;
 }
 
-const pageVariants = {
+const fadeIn = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } },
-  exit: { opacity: 0, y: -6, transition: { duration: 0.18, ease: 'easeIn' } },
 };
 
-function AnimatedPage({ children }) {
+function Page({ children }) {
   return (
-    <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+    <motion.div variants={fadeIn} initial="initial" animate="animate">
       {children}
     </motion.div>
   );
@@ -56,7 +55,6 @@ function AnimatedPage({ children }) {
 
 export default function App() {
   const { currentUser, userRole, accountVersion } = useAuth();
-  const location = useLocation();
 
   const isAuthPage = !currentUser || !userRole;
 
@@ -66,20 +64,18 @@ export default function App() {
         <OfflineBanner />
         <ErrorBoundary>
           <Suspense fallback={<PageLoader />}>
-            <AnimatePresence mode="wait">
-              <Routes key={`auth-${accountVersion}`} location={location}>
-                <Route path="/login" element={
-                  <AnimatedPage>{currentUser ? <Navigate to={userRole === 'parent' ? '/parent' : userRole === 'caregiver' ? '/caregiver' : '/role-selection'} /> : <Login />}</AnimatedPage>
-                } />
-                <Route path="/register" element={
-                  <AnimatedPage>{currentUser ? <Navigate to="/role-selection" /> : <Register />}</AnimatedPage>
-                } />
-                <Route path="/role-selection" element={
-                  <AnimatedPage><ProtectedRoute><RoleSelection /></ProtectedRoute></AnimatedPage>
-                } />
-                <Route path="*" element={<Navigate to="/login" />} />
-              </Routes>
-            </AnimatePresence>
+            <Routes key={`auth-${accountVersion}`}>
+              <Route path="/login" element={
+                <Page>{currentUser ? <Navigate to={userRole === 'parent' ? '/parent' : userRole === 'caregiver' ? '/caregiver' : '/role-selection'} /> : <Login />}</Page>
+              } />
+              <Route path="/register" element={
+                <Page>{currentUser ? <Navigate to="/role-selection" /> : <Register />}</Page>
+              } />
+              <Route path="/role-selection" element={
+                <Page><ProtectedRoute><RoleSelection /></ProtectedRoute></Page>
+              } />
+              <Route path="*" element={<Navigate to="/login" />} />
+            </Routes>
           </Suspense>
         </ErrorBoundary>
       </div>
@@ -93,32 +89,30 @@ export default function App() {
         <div className="app-content">
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
-              <AnimatePresence mode="wait">
-                <Routes key={`app-${accountVersion}`} location={location}>
-                  <Route path="/parent" element={
-                    <AnimatedPage><RoleGate><ParentHome /></RoleGate></AnimatedPage>
-                  } />
-                  <Route path="/caregiver" element={
-                    <AnimatedPage><RoleGate><CaregiverHome /></RoleGate></AnimatedPage>
-                  } />
-                  <Route path="/caregiver/log" element={
-                    <AnimatedPage><RoleGate><LogActivity /></RoleGate></AnimatedPage>
-                  } />
-                  <Route path="/parent/calendar" element={
-                    <AnimatedPage><RoleGate><Calendar /></RoleGate></AnimatedPage>
-                  } />
-                  <Route path="/parent/tracking" element={
-                    <AnimatedPage><RoleGate><TrackingMap /></RoleGate></AnimatedPage>
-                  } />
-                  <Route path="/safety-vault" element={
-                    <AnimatedPage><RoleGate><SafetyVault /></RoleGate></AnimatedPage>
-                  } />
-                  <Route path="/profile" element={
-                    <AnimatedPage><RoleGate><Profile /></RoleGate></AnimatedPage>
-                  } />
-                  <Route path="*" element={<Navigate to={userRole === 'parent' ? '/parent' : '/caregiver'} />} />
-                </Routes>
-              </AnimatePresence>
+              <Routes key={`app-${accountVersion}`}>
+                <Route path="/parent" element={
+                  <Page><RoleGate><ParentHome /></RoleGate></Page>
+                } />
+                <Route path="/caregiver" element={
+                  <Page><RoleGate><CaregiverHome /></RoleGate></Page>
+                } />
+                <Route path="/caregiver/log" element={
+                  <Page><RoleGate><LogActivity /></RoleGate></Page>
+                } />
+                <Route path="/parent/calendar" element={
+                  <Page><RoleGate><Calendar /></RoleGate></Page>
+                } />
+                <Route path="/parent/tracking" element={
+                  <Page><RoleGate><TrackingMap /></RoleGate></Page>
+                } />
+                <Route path="/safety-vault" element={
+                  <Page><RoleGate><SafetyVault /></RoleGate></Page>
+                } />
+                <Route path="/profile" element={
+                  <Page><RoleGate><Profile /></RoleGate></Page>
+                } />
+                <Route path="*" element={<Navigate to={userRole === 'parent' ? '/parent' : '/caregiver'} />} />
+              </Routes>
             </Suspense>
           </ErrorBoundary>
         </div>
