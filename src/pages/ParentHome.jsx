@@ -5,6 +5,9 @@ import { subscribeToActivities } from '../services/firestoreService';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { activityColors, activityIcons } from '../constants/activityData';
+import { SkeletonTimeline } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
+import EmergencyDashboard from '../components/EmergencyDashboard';
 
 export default function ParentHome() {
   const navigate = useNavigate();
@@ -12,6 +15,7 @@ export default function ParentHome() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingChild, setEditingChild] = useState(false);
+  const [showEmergency, setShowEmergency] = useState(false);
   const [childNameInput, setChildNameInput] = useState(childName || '');
   const childInputRef = useRef(null);
 
@@ -168,13 +172,27 @@ export default function ParentHome() {
         ))}
       </div>
 
+      {/* Emergency */}
+      <button
+        onClick={() => setShowEmergency(true)}
+        className="w-full py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 bg-secondary/10 text-secondary border border-secondary/20 card-interactive animate-fade-in-up"
+        style={{ animationDelay: '0.07s' }}
+      >
+        <span className="material-symbols-outlined text-[18px]">emergency</span>
+        Emergency Alert
+      </button>
+
       {/* Timeline */}
       <div className="animate-fade-in-up" style={{ animationDelay: '0.09s' }}>
         <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Today</h2>
         {loading ? (
-          <div className="card p-4 text-center text-sm text-outline">Loading...</div>
+          <SkeletonTimeline count={4} />
         ) : displayActivities.length === 0 ? (
-          <div className="card p-4 text-center text-sm text-outline">No activities logged today</div>
+          <EmptyState
+            icon="child_care"
+            title="No activities today"
+            message="Check back later or ask your caregiver to log activities."
+          />
         ) : (
           <div className="card overflow-hidden">
             <div className="divide-y divide-outline-variant/15">
@@ -200,6 +218,11 @@ export default function ParentHome() {
           </div>
         )}
       </div>
+
+      {/* Emergency Dashboard */}
+      {showEmergency && (
+        <EmergencyDashboard onClose={() => setShowEmergency(false)} linkKey={linkKey} />
+      )}
     </div>
   );
 }

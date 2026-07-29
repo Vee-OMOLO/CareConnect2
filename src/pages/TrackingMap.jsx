@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import PageHeader from '../components/PageHeader';
 import Toggle from '../components/Toggle';
+import { useToast } from '../components/Toast';
+import { SkeletonMap } from '../components/Skeleton';
 import { activityColors } from '../constants/activityData';
 
 const activityColorMap = activityColors;
@@ -34,8 +36,10 @@ export default function TrackingMap() {
   const [position, setPosition] = useState(null);
   const [watching, setWatching] = useState(false);
   const [error, setError] = useState('');
+  const [mapReady, setMapReady] = useState(false);
   const watchIdRef = useRef(null);
   const defaultPosition = [-1.2921, 36.8219];
+  const toast = useToast();
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -63,7 +67,10 @@ export default function TrackingMap() {
   }
 
   function copyMapsLink() {
-    if (position) navigator.clipboard.writeText(`https://www.google.com/maps?q=${position[0]},${position[1]}`);
+    if (position) {
+      navigator.clipboard.writeText(`https://www.google.com/maps?q=${position[0]},${position[1]}`);
+      toast.success('Location link copied!');
+    }
   }
 
   const recentLocations = [
@@ -101,9 +108,17 @@ export default function TrackingMap() {
       )}
 
       {/* Map */}
-      {position && (
+      {!position ? (
+        <SkeletonMap />
+      ) : (
         <div className="rounded-xl overflow-hidden animate-scale-in" style={{ height: 'clamp(200px, 40vw, 400px)' }}>
-          <MapContainer center={position} zoom={18} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+          <MapContainer
+            center={position}
+            zoom={18}
+            style={{ height: '100%', width: '100%' }}
+            zoomControl={false}
+            whenReady={() => setMapReady(true)}
+          >
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <Marker position={position} icon={caregiverIcon}>
               <Popup><div className="text-center text-sm"><strong>Caregiver</strong><br />{position[0].toFixed(6)}, {position[1].toFixed(6)}</div></Popup>

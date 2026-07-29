@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 
 const parentTabs = [
@@ -27,7 +28,7 @@ export default function BottomNav() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       aria-label="Main navigation"
     >
-      <div className="mx-2 mb-2 bg-white rounded-2xl border border-black/[0.04] shadow-[0_-1px_3px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.04)]">
+      <div className="mx-2 mb-2 bg-white/90 backdrop-blur-lg rounded-2xl border border-black/[0.04] shadow-[0_-1px_3px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.04)]">
         <div className="flex items-center justify-around py-2">
           {tabs.map(tab => {
             const isActive = location.pathname === tab.path;
@@ -36,21 +37,25 @@ export default function BottomNav() {
                 key={tab.path}
                 to={tab.path}
                 aria-current={isActive ? 'page' : undefined}
-                className="flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all duration-150 active:scale-95"
+                className="relative flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-all duration-150 active:scale-90"
               >
-                <span className={`material-symbols-outlined text-[24px] transition-colors duration-150 ${
+                {isActive && (
+                  <motion.div
+                    layoutId="nav-indicator"
+                    className="absolute -top-0.5 w-5 h-[2px] bg-primary rounded-full"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <span className={`material-symbols-outlined text-[24px] transition-colors duration-200 ${
                   isActive ? 'text-primary' : 'text-outline'
                 }`}>
                   {tab.icon}
                 </span>
-                <span className={`text-[11px] font-semibold transition-colors duration-150 ${
+                <span className={`text-[11px] font-semibold transition-colors duration-200 ${
                   isActive ? 'text-primary' : 'text-outline'
                 }`}>
                   {tab.label}
                 </span>
-                {isActive && (
-                  <div className="w-5 h-[2px] bg-primary rounded-full -mt-0.5" />
-                )}
               </NavLink>
             );
           })}

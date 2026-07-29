@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { logActivity } from '../services/firestoreService';
+import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import ActivityChip from '../components/ActivityChip';
 import { activityColors, activityTypes } from '../constants/activityData';
@@ -9,6 +10,7 @@ import { activityColors, activityTypes } from '../constants/activityData';
 export default function LogActivity() {
   const navigate = useNavigate();
   const { linkKey, currentUser } = useAuth();
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const initialType = searchParams.get('type') || 'feeding';
 
@@ -43,26 +45,29 @@ export default function LogActivity() {
       });
       if (result) {
         setSaved(true);
-        setTimeout(() => navigate('/caregiver'), 1200);
+        toast.success('Activity logged successfully!');
+        setTimeout(() => navigate('/caregiver'), 1000);
       } else {
         setError('Failed to save. Will retry when online.');
+        toast.error('Saved offline — will sync when connected');
         setSaving(false);
       }
     } catch (e) {
       console.error('Failed to log activity:', e);
       setError('An error occurred. Please try again.');
+      toast.error('Something went wrong. Please try again.');
       setSaving(false);
     }
   }
 
   if (saved) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
+      <div className="flex flex-col items-center justify-center py-24">
         <div className="text-center animate-scale-in">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: activityColors[selectedType]?.bg || '#edeeef' }}>
-            <span className="material-symbols-outlined text-[28px]" style={{ color: activityColors[selectedType]?.text || '#44474c' }}>check</span>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: activityColors[selectedType]?.bg || '#edeeef' }}>
+            <span className="material-symbols-outlined text-[36px]" style={{ color: activityColors[selectedType]?.text || '#44474c' }}>check</span>
           </div>
-          <h2 className="text-lg font-bold text-on-surface">Logged!</h2>
+          <h2 className="text-xl font-bold text-on-surface">Logged!</h2>
           <p className="text-sm text-on-surface-variant mt-1">{currentType?.label} activity saved</p>
         </div>
       </div>

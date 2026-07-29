@@ -363,10 +363,10 @@ a {
 .auth-social-button:active { transform: scale(0.98); }
 
 /* ============================================================
-   SOS
+   EMERGENCY
    ============================================================ */
 
-.sos-glow {
+.emergency-glow {
   animation: pulse-glow 2s infinite;
 }
 
@@ -429,6 +429,35 @@ a {
 }
 
 .leaflet-control-zoom { display: none !important; }
+
+/* ============================================================
+   SKELETON SHIMMER
+   ============================================================ */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-pulse {
+  background: linear-gradient(90deg, #e1e3e4 25%, #edeeef 50%, #e1e3e4 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ============================================================
+   TOAST ENHANCEMENTS
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-slide-up,
+  .animate-scale-in,
+  .animate-shake,
+  .animate-pulse {
+    animation: none !important;
+  }
+}
 
 /* ============================================================
    INPUT AUTOFILL

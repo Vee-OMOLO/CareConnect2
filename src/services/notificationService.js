@@ -27,13 +27,13 @@ export async function notifyParent(linkKey, activityType, details) {
   }
 }
 
-// Send SOS notification
-export async function notifySOS(linkKey, location) {
+// Send emergency notification
+export async function notifyEmergency(linkKey, location) {
   try {
     await addDoc(collection(db, 'notifications'), {
       childId: linkKey,
       type: 'sos',
-      title: 'EMERGENCY SOS',
+      title: '🚨 EMERGENCY',
       body: `Emergency alert triggered at ${location?.lat?.toFixed(4) || 'unknown'}, ${location?.lng?.toFixed(4) || 'unknown'}`,
       read: false,
       priority: 'high',
@@ -41,7 +41,7 @@ export async function notifySOS(linkKey, location) {
       createdAt: new Date().toISOString(),
     });
   } catch {
-    // Silently fail — SOS is best-effort
+    // Silently fail — emergency alert is best-effort
   }
 }
 
@@ -53,7 +53,7 @@ function getNotificationTitle(type) {
     play: 'Play Time',
     medicine: 'Medicine Given',
     health: 'Health Check',
-    sos: 'EMERGENCY SOS',
+    sos: '🚨 EMERGENCY',
   };
   return titles[type] || 'Activity Update';
 }

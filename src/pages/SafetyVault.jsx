@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import EmergencyDashboard from '../components/EmergencyDashboard';
 import { activityColors } from '../constants/activityData';
@@ -50,6 +51,7 @@ function AddContactModal({ newContact, setNewContact, onSave, onClose }) {
 
 export default function SafetyVault() {
   const { linkKey } = useAuth();
+  const toast = useToast();
   const [showAddContact, setShowAddContact] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
   const [contacts, setContacts] = useState(defaultContacts);
@@ -88,12 +90,14 @@ export default function SafetyVault() {
     }
     setNewContact({ name: '', role: '', phone: '' });
     setShowAddContact(false);
+    toast.success('Contact added');
   }
 
   function removeContact(index) {
     const updated = contacts.filter((_, i) => i !== index);
     setContacts(updated);
     saveContactsOffline(updated);
+    toast.info('Contact removed');
   }
 
   return (
@@ -109,13 +113,13 @@ export default function SafetyVault() {
         }
       />
 
-      {/* SOS */}
+      {/* Emergency */}
       <button
         onClick={() => setShowEmergency(true)}
-        className="w-full bg-secondary text-on-secondary py-3 rounded-xl font-bold text-base flex items-center justify-center gap-2 sos-glow card-interactive animate-fade-in-up"
+        className="w-full bg-secondary text-on-secondary py-3 rounded-xl font-bold text-base flex items-center justify-center gap-2 emergency-glow card-interactive animate-fade-in-up"
       >
         <span className="material-symbols-outlined text-[20px]">emergency</span>
-        Emergency SOS
+        Emergency Alert
       </button>
 
       {/* Contacts */}
@@ -198,15 +202,7 @@ export default function SafetyVault() {
         </div>
       </div>
 
-      {/* Offline Notice */}
-      {!isOnline && (
-        <div className="card p-3 bg-medicine-bg/30 border border-medicine/15 animate-fade-in-up">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-medicine text-[18px]">cloud_off</span>
-            <p className="text-sm text-on-surface">Offline — contacts saved locally</p>
-          </div>
-        </div>
-      )}
+      {/* Offline is now shown via global OfflineBanner */}
 
       {/* Add Contact Modal */}
       {showAddContact && (

@@ -48,8 +48,8 @@ export function subscribeToActivities(linkKey, callback, onError) {
   });
 }
 
-// Create an SOS alert
-export async function createSOSAlert(linkKey, location) {
+// Create an emergency alert
+export async function createEmergencyAlert(linkKey, location) {
   try {
     const docRef = await addDoc(collection(db, 'sosAlerts'), {
       childId: linkKey,
@@ -71,7 +71,7 @@ export async function createSOSAlert(linkKey, location) {
 
     return docRef.id;
   } catch (e) {
-    console.error('Error creating SOS:', e);
+    console.error('Error creating emergency alert:', e);
     saveToOfflineQueue('sos', { linkKey, location });
     return null;
   }
@@ -183,7 +183,7 @@ export async function processOfflineQueue() {
           processed.push(item);
           break;
         case 'sos':
-          await createSOSAlert(item.data.linkKey, item.data.location);
+          await createEmergencyAlert(item.data.linkKey, item.data.location);
           processed.push(item);
           break;
         case 'event':

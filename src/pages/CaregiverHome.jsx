@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { subscribeToActivities } from '../services/firestoreService';
-import Toggle from '../components/Toggle';
 import EmergencyDashboard from '../components/EmergencyDashboard';
 import { activityColors, activityTypes } from '../constants/activityData';
+import { SkeletonTimeline } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 
 export default function CaregiverHome() {
   const navigate = useNavigate();
@@ -51,10 +52,10 @@ export default function CaregiverHome() {
   </div>
   <button
     onClick={() => setShowEmergency(true)}
-    className="flex items-center gap-2 px-4 py-2 bg-secondary text-on-secondary rounded-xl font-semibold text-sm sos-glow card-interactive"
+    className="flex items-center gap-2 px-4 py-2 bg-secondary text-on-secondary rounded-xl font-semibold text-sm emergency-glow card-interactive"
   >
     <span className="material-symbols-outlined text-[18px]">emergency_share</span>
-    SOS
+    Emergency
   </button>
   </div>
 
@@ -96,9 +97,13 @@ export default function CaregiverHome() {
       <div className="animate-fade-in-up" style={{ animationDelay: '0.06s' }}>
         <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Today's Log</h2>
         {loading ? (
-          <div className="card p-4 text-center text-sm text-outline">Loading...</div>
+          <SkeletonTimeline count={3} />
         ) : displayLogs.length === 0 ? (
-          <div className="card p-4 text-center text-sm text-outline">No activities logged today. Tap a category above to log one.</div>
+          <EmptyState
+            icon="edit_note"
+            title="No logs yet today"
+            message="Tap an activity type above to log your first one."
+          />
         ) : (
           <div className="card overflow-hidden">
             <div className="divide-y divide-outline-variant/15">

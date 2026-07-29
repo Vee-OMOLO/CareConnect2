@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { createSOSAlert } from '../services/firestoreService';
-import { notifySOS } from '../services/notificationService';
+import { createEmergencyAlert } from '../services/firestoreService';
+import { notifyEmergency } from '../services/notificationService';
 
 const emergencyTypes = [
   { type: 'medical', label: 'Medical', icon: 'local_hospital', color: '#E85D75', bg: '#FDE8EC' },
@@ -14,7 +14,7 @@ const emergencyTypes = [
 export default function EmergencyDashboard({ onClose, linkKey }) {
   const [selectedType, setSelectedType] = useState(null);
   const [customEmergency, setCustomEmergency] = useState('');
-  const [sosLoading, setSosLoading] = useState(false);
+  const [emergencyLoading, setEmergencyLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [location, setLocation] = useState(null);
   const inputRef = useRef(null);
@@ -39,11 +39,11 @@ export default function EmergencyDashboard({ onClose, linkKey }) {
 
   async function handleSendAlert() {
     if (!linkKey) return;
-    setSosLoading(true);
+    setEmergencyLoading(true);
     try {
-      await createSOSAlert(linkKey, location);
-      await notifySOS(linkKey, location).catch(() =>
-        console.warn('SOS recorded but parent notification failed')
+      await createEmergencyAlert(linkKey, location);
+      await notifyEmergency(linkKey, location).catch(() =>
+        console.warn('Emergency recorded but parent notification failed')
       );
       setSent(true);
       setTimeout(() => { onClose(); setSent(false); }, 2000);
@@ -51,7 +51,7 @@ export default function EmergencyDashboard({ onClose, linkKey }) {
       setSent(true);
       setTimeout(() => { onClose(); setSent(false); }, 2000);
     } finally {
-      setSosLoading(false);
+      setEmergencyLoading(false);
     }
   }
 
@@ -161,11 +161,11 @@ export default function EmergencyDashboard({ onClose, linkKey }) {
               </button>
               <button
                 onClick={handleSendAlert}
-                disabled={!selectedType || (selectedType === 'custom' && !customEmergency.trim()) || sosLoading}
+                disabled={!selectedType || (selectedType === 'custom' && !customEmergency.trim()) || emergencyLoading}
                 className="w-full py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 bg-primary text-on-primary disabled:opacity-40 active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-[20px]">notification_important</span>
-                {sosLoading ? 'Sending...' : `Alert Emergency Contacts`}
+                {emergencyLoading ? 'Sending...' : `Alert Emergency Contacts`}
               </button>
               <button
                 onClick={onClose}
