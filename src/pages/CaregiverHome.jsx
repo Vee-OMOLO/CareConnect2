@@ -40,33 +40,39 @@ export default function CaregiverHome() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between animate-fade-in-up">
-        <div className="min-w-0">
-          <p className="text-sm text-on-surface-variant">{greeting}</p>
-          <h1 className="text-2xl font-bold text-on-surface tracking-tight">{childName || 'Child'}</h1>
-        </div>
-        <button
-          onClick={() => setShowEmergency(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-secondary text-on-secondary rounded-xl font-semibold text-sm sos-glow card-interactive"
-        >
-          <span className="material-symbols-outlined text-[18px]">emergency_share</span>
-          SOS
-        </button>
-      </div>
+  {/* Header */}
+  <div className="flex items-center justify-between animate-fade-in-up">
+  <div className="min-w-0">
+  <p className="text-sm text-on-surface-variant">{greeting}</p>
+  <h1 className="text-2xl font-bold text-on-surface tracking-tight">{childName ? `Caring for ${childName}` : 'Child'}</h1>
+  {parentEmail && (
+  <p className="text-xs text-outline truncate mt-0.5">Linked to {parentEmail}</p>
+  )}
+  </div>
+  <button
+    onClick={() => setShowEmergency(true)}
+    className="flex items-center gap-2 px-4 py-2 bg-secondary text-on-secondary rounded-xl font-semibold text-sm sos-glow card-interactive"
+  >
+    <span className="material-symbols-outlined text-[18px]">emergency_share</span>
+    SOS
+  </button>
+  </div>
 
-      {/* Linked Account */}
-      {parentEmail && (
-        <div className="card p-3 animate-fade-in-up" style={{ animationDelay: '0.02s' }}>
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[16px]">link</span>
-            <span className="text-xs text-on-surface-variant">Linked to</span>
-            <span className="text-xs font-semibold text-on-surface truncate">{parentEmail}</span>
-            <span className="text-xs text-on-surface-variant">/</span>
-            <span className="text-xs font-semibold text-on-surface truncate">{childName}</span>
-          </div>
-        </div>
-      )}
+  {/* Family Link Card */}
+  {parentEmail && childName && (
+  <div className="card p-4 animate-fade-in-up" style={{ animationDelay: '0.02s' }}>
+  <div className="flex items-center gap-3">
+  <div className="w-10 h-10 rounded-[10px] bg-primary/10 flex items-center justify-center flex-shrink-0">
+  <span className="material-symbols-outlined text-primary text-[20px]">family_restroom</span>
+  </div>
+  <div className="min-w-0 flex-1">
+  <p className="text-xs text-on-surface-variant">Connected Family</p>
+  <p className="text-sm font-semibold text-on-surface truncate">{childName} <span className="font-normal text-on-surface-variant">· {parentEmail}</span></p>
+  </div>
+  <span className="material-symbols-outlined text-[16px] text-health">check_circle</span>
+  </div>
+  </div>
+  )}
 
       {/* Quick Log */}
       <div className="animate-fade-in-up" style={{ animationDelay: '0.03s' }}>
