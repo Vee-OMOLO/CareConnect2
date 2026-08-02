@@ -1,10 +1,22 @@
 // Single source of truth for the app version shown in the UI and used for
 // update detection. Keep in sync with package.json and public/version.json.
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.1.1';
 
 // Changelog shown once per version in the "What's New" sheet.
 // Each entry: { icon, title, description }
 export const CHANGELOG = {
+  '1.1.1': [
+    {
+      icon: 'cloud_sync',
+      title: 'Saved offline — now it really syncs',
+      description: 'Fixed a bug where logs saved offline were being lost instead of syncing. Anything queued is now retried until it lands in the family timeline.',
+    },
+    {
+      icon: 'cloud_off',
+      title: 'Dashboards explain connection issues',
+      description: "If logs can't load, you'll see a clear message with a Retry button instead of a misleading empty timeline.",
+    },
+  ],
   '1.1.0': [
     {
       icon: 'unlock',
