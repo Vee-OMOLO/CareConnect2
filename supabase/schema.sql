@@ -208,6 +208,21 @@ begin
   end loop;
 end $$;
 
+-- Realtime: ensure tables are in the supabase_realtime publication
+do $$
+begin
+  perform add_table_to_publication('supabase_realtime', 'public.activity_logs');
+  perform add_table_to_publication('supabase_realtime', 'public.sos_alerts');
+  perform add_table_to_publication('supabase_realtime', 'public.child_events');
+  perform add_table_to_publication('supabase_realtime', 'public.caregiver_locations');
+  perform add_table_to_publication('supabase_realtime', 'public.emergency_contacts');
+  perform add_table_to_publication('supabase_realtime', 'public.notifications');
+exception when others then
+  -- fallback for older PG versions / edge cases
+  null;
+end;
+$$;
+
 -- caregiver_locations: members can read; each caregiver upserts their own row
 drop policy if exists "loc select member" on public.caregiver_locations;
 create policy "loc select member" on public.caregiver_locations for select

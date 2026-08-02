@@ -8,19 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-// Fallback visual data — real events stream from Firestore when a family is linked
-const sampleEvents = [
-  { day: 8, type: 'medicine', label: 'Med' },
-  { day: 12, type: 'health', label: 'Appt' },
-  { day: 20, type: 'medicine', label: 'Med' },
-  { day: 25, type: 'health', label: 'Check' },
-];
-
-const sampleUpcomingEvents = [
-  { title: 'Blood pressure check', time: 'Today, 2:00 PM', type: 'health', icon: 'favorite' },
-  { title: 'Medication refill reminder', time: 'Tomorrow, 9:00 AM', type: 'medicine', icon: 'medication' },
-  { title: 'Doctor appointment', time: 'Mar 20, 10:30 AM', type: 'health', icon: 'local_hospital' },
-];
+// Real events stream from Supabase when a family is linked; empty state shown otherwise.
 
 const eventIcons = { medicine: 'medication', health: 'local_hospital', feeding: 'restaurant', play: 'child_care' };
 
@@ -28,20 +16,14 @@ export default function Calendar() {
   const { linkKey } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [direction, setDirection] = useState(0);
-  const [events, setEvents] = useState(sampleEvents);
-  const [upcoming, setUpcoming] = useState(sampleUpcomingEvents);
+  const [events, setEvents] = useState([]);
+  const [upcoming, setUpcoming] = useState([]);
 
-  // Stream real events from Firestore; fall back to sample visuals when
-  // there is no link or the subscription fails.
+  // Stream real events from Supabase when a family is linked.
   useEffect(() => {
-    if (!linkKey) {
-      setEvents(sampleEvents);
-      setUpcoming(sampleUpcomingEvents);
-      return undefined;
-    }
+    if (!linkKey) return undefined;
 
     const unsub = subscribeToEvents(linkKey, (data) => {
-      if (data.length === 0) return; // keep fallback visuals while empty
       setEvents(data.map(ev => {
         const d = ev.date ? new Date(ev.date) : null;
         return {
@@ -53,15 +35,12 @@ export default function Calendar() {
       }));
       setUpcoming(data.map(ev => ({
         title: ev.title || 'Event',
-        time: ev.date
-          ? new Date(ev.date).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-          : 'Scheduled',
+        time: ev.date ? new Date(ev.date).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Scheduled',
         type: ev.type || 'health',
         icon: eventIcons[ev.type] || 'event',
       })));
     }, () => {
-      setEvents(sampleEvents);
-      setUpcoming(sampleUpcomingEvents);
+      // keep empty state on error
     });
 
     return unsub;

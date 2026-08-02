@@ -58,14 +58,14 @@ export default function SafetyVault() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const primaryContact = contacts.find(c => c.isPrimary);
 
-  function saveContactsOffline(data) {
-    try { localStorage.setItem('careconnect-emergency-contacts', JSON.stringify(data)); } catch (e) { /* silent */ }
-  }
+function saveContactsOffline(data) {
+  try { localStorage.setItem('careconnect-emergency-contacts', JSON.stringify(data)); } catch { /* silent */ }
+}
 
-  function loadContactsOffline() {
-    try { const saved = localStorage.getItem('careconnect-emergency-contacts'); if (saved) return JSON.parse(saved); } catch (e) { /* silent */ }
-    return defaultContacts;
-  }
+function loadContactsOffline() {
+  try { const saved = localStorage.getItem('careconnect-emergency-contacts'); if (saved) return JSON.parse(saved); } catch { /* silent */ }
+  return defaultContacts;
+}
 
   useEffect(() => {
     setContacts(loadContactsOffline());

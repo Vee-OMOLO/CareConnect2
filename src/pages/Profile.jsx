@@ -10,7 +10,7 @@ export default function Profile() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const userName = userRole === 'parent' ? 'Margaret Johnson' : 'Sarah Williams';
+  const userName = currentUser?.email ? currentUser.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : (userRole === 'parent' ? 'Parent' : 'Caregiver');
 
   const settingsItems = [
     { icon: 'notifications', label: 'Notifications', subtitle: 'Alert preferences' },

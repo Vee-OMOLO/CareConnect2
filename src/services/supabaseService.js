@@ -2,10 +2,9 @@ import { supabase } from '../supabase';
 
 // ============================================================================
 // Supabase data layer for CareConnect.
-// Auth stays on Firebase; every request carries the Firebase UID via the
-// "x-firebase-uid" header (injected by src/supabase.js) and RLS in
-// supabase/schema.sql enforces per-family access.
-// API mirrors the old firestoreService so callers only changed imports.
+// Auth and data both live on Supabase. RLS in supabase/schema.sql enforces
+// per-family access. API mirrors the old firestoreService so callers only
+// changed imports.
 // ============================================================================
 
 // Build the composite link key from parent email + child name
@@ -75,8 +74,11 @@ export function subscribeToActivities(linkKey, callback, onError) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_logs', filter: `link_key=eq.${linkKey}` }, load)
     .subscribe();
 
+  const poll = setInterval(load, 30000);
+
   return () => {
     active = false;
+    clearInterval(poll);
     sb.removeChannel(channel);
   };
 }
@@ -165,8 +167,11 @@ export function subscribeToEvents(linkKey, callback, onError) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'child_events', filter: `link_key=eq.${linkKey}` }, load)
     .subscribe();
 
+  const poll = setInterval(load, 30000);
+
   return () => {
     active = false;
+    clearInterval(poll);
     sb.removeChannel(channel);
   };
 }
