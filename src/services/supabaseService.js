@@ -248,7 +248,7 @@ export async function getUserProfile(uid) {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_uid', uid)
+      .eq('id', uid)
       .maybeSingle();
     if (error) throw error;
     return data || null;
@@ -264,7 +264,7 @@ export async function saveUserProfile(uid, data) {
       .from('profiles')
       .upsert(
         {
-          user_uid: uid,
+          id: uid,
           email: data.email !== undefined ? data.email : null,
           name: data.name !== undefined ? data.name : null,
           role: data.role !== undefined ? data.role : null,
@@ -272,7 +272,7 @@ export async function saveUserProfile(uid, data) {
           parent_email: data.parentEmail !== undefined ? data.parentEmail : null,
           updated_at: new Date().toISOString(),
         },
-        { onConflict: 'user_uid' }
+        { onConflict: 'id' }
       );
     if (error) throw error;
   } catch (e) {
