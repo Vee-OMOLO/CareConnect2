@@ -65,7 +65,6 @@ export default function Profile() {
         {[
           { label: 'Days Active', value: '45', icon: 'calendar_today' },
           { label: 'Logs', value: '128', icon: 'edit_note' },
-          { label: 'Streak', value: '12d', icon: 'local_fire_department' },
         ].map((stat, i) => (
           <div key={i} className="card p-3 text-center">
             <span className="material-symbols-outlined text-[18px] text-outline">{stat.icon}</span>

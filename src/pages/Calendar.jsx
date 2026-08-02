@@ -107,6 +107,13 @@ export default function Calendar() {
           >
             <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
           </button>
+          <button
+            onClick={() => setShowAddEvent(true)}
+            className="w-9 h-9 rounded-xl bg-surface-container-low flex items-center justify-center card-interactive"
+            aria-label="Add event"
+          >
+            <span className="material-symbols-outlined text-primary text-[20px]">add</span>
+          </button>
         </div>
 
         <div className="grid grid-cols-7 gap-1 mb-1">
@@ -183,6 +190,85 @@ export default function Calendar() {
           })}
         </div>
       </div>
+
+      {/* Add Event Modal */}
+      {showAddEvent && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 animate-slide-up shadow-lg">
+            <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold text-on-surface mb-4">Add Event</h2>
+            <div className="flex flex-col gap-3">
+              <input
+                value={newEvent.title}
+                onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                placeholder="Event title (e.g., Doctor's Appointment)"
+                className="glass-input"
+              />
+              <input
+                type="datetime-local"
+                value={newEvent.date}
+                onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                className="glass-input"
+              />
+              <select
+                value={newEvent.type}
+                onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
+                className="glass-input"
+              >
+                <option value="health">Health</option>
+                <option value="medicine">Medicine</option>
+                <option value="feeding">Feeding</option>
+                <option value="play">Play</option>
+              </select>
+              <textarea
+                value={newEvent.notes}
+                onChange={(e) => setNewEvent({ ...newEvent, notes: e.target.value })}
+                placeholder="Notes (optional)"
+                className="glass-input min-h-[80px] resize-none"
+                rows="3"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAddEvent(false)}
+                  className="flex-1 bg-surface-container-low text-on-surface py-2.5 rounded-xl font-semibold text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!newEvent.title || !newEvent.date) return;
+                    await addLocalEvent(linkKey, {
+                      title: newEvent.title,
+                      date: new Date(newEvent.date).toISOString(),
+                      type: newEvent.type,
+                      notes: newEvent.notes,
+                    });
+                    toast?.success?.('Event added');
+                    setShowAddEvent(false);
+                    setNewEvent({ title: '', date: '', type: 'health', notes: '' });
+                    // Refresh events
+                    getAllEvents(linkKey).then((data) => {
+                      setEvents(data.map(ev => {
+                        const d = ev.date ? new Date(ev.date) : null;
+                        return { day: d ? d.getDate() : null, type: ev.type || 'health', label: ev.title || ev.type || 'Event', date: ev.date };
+                      }));
+                      setUpcoming(data.map(ev => ({
+                        title: ev.title || 'Event',
+                        time: ev.date ? new Date(ev.date).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Scheduled',
+                        type: ev.type || 'health',
+                        icon: eventIcons[ev.type] || 'event',
+                      })));
+                    });
+                  }}
+                  className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-sm"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

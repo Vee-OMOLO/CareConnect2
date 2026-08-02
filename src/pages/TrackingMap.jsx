@@ -63,7 +63,7 @@ export default function TrackingMap() {
       setWatching(false);
       toast.success('Location sharing stopped');
     } else if (navigator.geolocation) {
-      // Persist location to Firestore (doc keyed by caregiver uid)
+      // Persist location to Supabase (doc keyed by caregiver uid)
       startLocationTracking(currentUser?.uid || 'unknown');
 
       watchIdRef.current = navigator.geolocation.watchPosition(
@@ -154,7 +154,7 @@ export default function TrackingMap() {
             <p className="text-xs text-outline mt-0.5 leading-relaxed">
               {watching
                 ? 'Your live location is being saved securely to the linked family. Updates every ~10 seconds while active.'
-                : 'Start live tracking to share your location with the linked family. Positions are saved to Firestore (doc keyed by your account).'}
+                : 'Start live tracking to share your location with the linked family. Positions are saved to Supabase (doc keyed by your account).'}
             </p>
           </div>
         </div>

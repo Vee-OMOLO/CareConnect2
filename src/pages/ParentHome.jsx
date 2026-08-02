@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllActivities } from '../services/demoLogger';
-import { activityColors, activityIcons } from '../constants/activityData';
+import { activityColors, activityIcons, activityTypes } from '../constants/activityData';
 import { SkeletonTimeline } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import EmergencyDashboard from '../components/EmergencyDashboard';
@@ -191,7 +191,7 @@ export default function ParentHome() {
               <span className="material-symbols-outlined text-on-surface-variant text-[24px]">cloud_off</span>
             </div>
             <p className="text-sm font-semibold text-on-surface">Couldn't load activities</p>
-            <p className="text-xs text-on-surface-variant mt-1 max-w-[260px]">You may be offline or Firestore rules are blocking reads. Saved logs will appear here once synced.</p>
+            <p className="text-xs text-on-surface-variant mt-1 max-w-[260px]">You may be offline or Supabase is not responding. Saved logs will appear here once synced.</p>
             <button
               onClick={() => window.location.reload()}
               className="mt-4 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold card-interactive"
@@ -217,7 +217,7 @@ export default function ParentHome() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-on-surface break-words">
-                      {item.activity_type} — {item.details?.option || 'logged'}
+                      {activityTypes.find(a => a.type === item.activity_type)?.label || item.activity_type} — {item.details?.option || 'logged'}
                       {item.details?.quantity ? ` (${item.details.quantity})` : ''}
                     </p>
                   </div>

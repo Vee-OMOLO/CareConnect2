@@ -52,7 +52,7 @@ export default function LinkFamily() {
       try {
         await updateProfile({ parentEmail: '', childName: '' });
       } catch (e) {
-        console.error('Failed to remove family link from Firestore:', e);
+        console.error('Failed to remove family link from Supabase:', e);
       }
     }
     toast.info('Family link removed');

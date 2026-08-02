@@ -19,17 +19,17 @@ export default function RoleSelection() {
     setSaving(true);
 
     // Local-first: set the role and navigate immediately.
-    // The app must NEVER block on Firestore here — a denied write or a slow
+    // The app must NEVER block on Supabase here — a denied write or a slow
     // network previously left users stuck on this page with no feedback.
     setRole(role);
     navigate(role === 'parent' ? '/parent' : '/caregiver');
 
-    // Best-effort persistence to Firestore (non-blocking).
+    // Best-effort persistence to Supabase (non-blocking).
     if (currentUser) {
       try {
         await updateProfile({ role, email: currentUser.email });
       } catch (e) {
-        console.error('Failed to persist role to Firestore:', e);
+        console.error('Failed to persist role to Supabase:', e);
         toast.error('Role saved on this device — will sync when connected');
       }
     }

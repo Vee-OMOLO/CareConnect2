@@ -122,7 +122,7 @@ export default function CaregiverHome() {
               <span className="material-symbols-outlined text-on-surface-variant text-[24px]">cloud_off</span>
             </div>
             <p className="text-sm font-semibold text-on-surface">Couldn't load logs</p>
-            <p className="text-xs text-on-surface-variant mt-1 max-w-[260px]">You may be offline or Firestore rules are blocking reads. New logs are kept locally and will sync.</p>
+            <p className="text-xs text-on-surface-variant mt-1 max-w-[260px]">You may be offline or Supabase is not responding. New logs are kept locally and will sync.</p>
             <button
               onClick={() => window.location.reload()}
               className="mt-4 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold card-interactive"

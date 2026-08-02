@@ -53,7 +53,7 @@ export default function App() {
 
   // Flush any offline-queued actions (activities, SOS, events) on boot,
   // whenever the connection comes back, and periodically so queued logs
-  // sync automatically once Firestore writes succeed again.
+  // sync automatically once Supabase writes succeed again.
   useEffect(() => {
     const flush = () => processOfflineQueue();
     flush();
