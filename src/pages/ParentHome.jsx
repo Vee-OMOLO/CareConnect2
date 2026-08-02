@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllActivities } from '../services/demoLogger';
+import { getAllActivities, getEmergencyAlerts } from '../services/demoLogger';
 import { activityColors, activityIcons, activityTypes } from '../constants/activityData';
 import { SkeletonTimeline } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -11,6 +11,7 @@ export default function ParentHome() {
   const navigate = useNavigate();
   const { currentUser, linkKey, childName, setChild, updateProfile } = useAuth();
   const [activities, setActivities] = useState([]);
+  const [emergencyAlerts, setEmergencyAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [editingChild, setEditingChild] = useState(false);
@@ -30,6 +31,11 @@ export default function ParentHome() {
     }).catch(() => {
       setLoading(false);
       setError(true);
+    });
+    getEmergencyAlerts(linkKey).then((alerts) => {
+      setEmergencyAlerts(alerts);
+    }).catch(() => {
+      setEmergencyAlerts([]);
     });
   }, [linkKey]);
 
@@ -230,6 +236,34 @@ export default function ParentHome() {
           </div>
         )}
       </div>
+
+      {/* Emergency Alerts */}
+      {emergencyAlerts.length > 0 && (
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.09s' }}>
+          <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Recent Alerts</h2>
+          <div className="flex flex-col gap-2">
+            {emergencyAlerts.slice(0, 3).map((alert) => (
+              <div key={alert.id} className="card p-3 bg-medicine-bg border border-medicine/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 bg-medicine rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-on-primary text-[20px]">emergency</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-medicine">Emergency Alert</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {alert.caregiver_id ? 'From caregiver' : 'Emergency signal received'}
+                      {alert.location && ` • Location shared`}
+                    </p>
+                  </div>
+                  <span className="text-xs text-medicine font-medium flex-shrink-0">
+                    {new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Emergency Dashboard */}
       {showEmergency && (

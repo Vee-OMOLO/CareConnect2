@@ -169,6 +169,27 @@ export async function syncLocalActivities(linkKey) {
   }
 }
 
+// Get all emergency alerts for a linkKey (shared between devices)
+export async function getEmergencyAlerts(linkKey) {
+  let supabaseAlerts = [];
+  try {
+    const { data, error } = await supabase
+      .from('sos_alerts')
+      .select('*')
+      .eq('link_key', linkKey)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    if (!error && data) {
+      supabaseAlerts = data;
+    }
+  } catch {
+    // Silently ignore Supabase errors
+  }
+  
+  return supabaseAlerts;
+}
+
 // Cleanup old activities
 export function cleanupDemoActivities(maxAgeDays = 30) {
   try {
