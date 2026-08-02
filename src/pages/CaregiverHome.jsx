@@ -37,8 +37,8 @@ export default function CaregiverHome() {
 
   const today = new Date().toDateString();
   const todayActivities = activities.filter(a => {
-    if (!a.timestamp) return false;
-    const d = a.timestamp.seconds ? new Date(a.timestamp.seconds * 1000) : new Date(a.createdAt);
+    if (!a.created_at) return false;
+    const d = new Date(a.created_at);
     return d.toDateString() === today;
   });
 
