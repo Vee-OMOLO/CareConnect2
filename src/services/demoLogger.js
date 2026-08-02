@@ -58,7 +58,7 @@ export async function getAllActivities(linkKey) {
   try {
     // Try to get from Supabase first if we think it's working
     if (supabaseWorking) {
-      const { supabase } = await import('./supabase');
+      const { supabase } = await import('../supabase');
       const { data, error } = await supabase
         .from('activity_logs')
         .select('*')
