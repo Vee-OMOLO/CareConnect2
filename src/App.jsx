@@ -51,13 +51,19 @@ export default function App() {
   const [updateAvailable, setUpdateAvailable] = useState(null);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
 
-  // Flush any offline-queued actions (activities, SOS, events) on boot
-  // and whenever the connection comes back.
+  // Flush any offline-queued actions (activities, SOS, events) on boot,
+  // whenever the connection comes back, and periodically so queued logs
+  // sync automatically once Firestore writes succeed again.
   useEffect(() => {
-    processOfflineQueue();
+    const flush = () => processOfflineQueue();
+    flush();
     const handleOnline = () => processOfflineQueue();
     window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
+    const interval = setInterval(flush, 45000);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      clearInterval(interval);
+    };
   }, []);
 
   // Live update detection + one-time "What's New" per version.

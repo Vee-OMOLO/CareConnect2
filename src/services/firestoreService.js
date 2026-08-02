@@ -73,7 +73,7 @@ export async function createEmergencyAlert(linkKey, location, caregiverId = 'unk
     return docRef.id;
   } catch (e) {
     console.error('Error creating emergency alert:', e);
-    saveToOfflineQueue('sos', { linkKey, location });
+    saveToOfflineQueue('sos', { linkKey, location, caregiverId });
     return null;
   }
 }
@@ -169,26 +169,32 @@ export async function processOfflineQueue() {
     const queue = JSON.parse(localStorage.getItem('careconnect-offline-queue') || '[]');
     if (queue.length === 0) return;
 
-    const processed = [];
+    // Only drop an item after it ACTUALLY succeeded — a failed write (offline,
+    // denied rules, etc.) must stay queued for the next retry instead of being
+    // silently erased.
+    const remaining = [];
     for (const item of queue) {
-      switch (item.type) {
-        case 'activity':
-          await logActivity(item.data.linkKey, item.data);
-          processed.push(item);
-          break;
-        case 'sos':
-          await createEmergencyAlert(item.data.linkKey, item.data.location);
-          processed.push(item);
-          break;
-        case 'event':
-          await addEvent(item.data.linkKey, item.data);
-          processed.push(item);
-          break;
+      let ok = false;
+      try {
+        switch (item.type) {
+          case 'activity':
+            if (await logActivity(item.data.linkKey, item.data)) ok = true;
+            break;
+          case 'sos':
+            if (await createEmergencyAlert(item.data.linkKey, item.data.location, item.data.caregiverId)) ok = true;
+            break;
+          case 'event':
+            if (await addEvent(item.data.linkKey, item.data)) ok = true;
+            break;
+          default:
+            ok = true; // unknown item types are dropped without retrying
+        }
+      } catch (e) {
+        console.error('Offline queue item failed:', e);
       }
+      if (!ok) remaining.push(item);
     }
 
-    // Remove processed items
-    const remaining = queue.filter(item => !processed.includes(item));
     localStorage.setItem('careconnect-offline-queue', JSON.stringify(remaining));
   } catch (e) {
     console.error('Error processing offline queue:', e);

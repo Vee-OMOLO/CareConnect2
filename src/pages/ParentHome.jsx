@@ -14,6 +14,7 @@ export default function ParentHome() {
   const { currentUser, linkKey, childName, setChild } = useAuth();
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [editingChild, setEditingChild] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
   const [childNameInput, setChildNameInput] = useState(childName || '');
@@ -23,11 +24,14 @@ export default function ParentHome() {
     if (!linkKey) { setActivities([]); setLoading(false); return; }
     setActivities([]);
     setLoading(true);
+    setError(false);
     const unsub = subscribeToActivities(linkKey, (data) => {
       setActivities(data);
       setLoading(false);
+      setError(false);
     }, () => {
       setLoading(false);
+      setError(true);
     });
     return unsub;
   }, [linkKey]);
@@ -187,6 +191,20 @@ export default function ParentHome() {
         <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Today</h2>
         {loading ? (
           <SkeletonTimeline count={4} />
+        ) : error && displayActivities.length === 0 ? (
+          <div className="card p-6 flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-2xl bg-surface-variant/40 flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-on-surface-variant text-[24px]">cloud_off</span>
+            </div>
+            <p className="text-sm font-semibold text-on-surface">Couldn't load activities</p>
+            <p className="text-xs text-on-surface-variant mt-1 max-w-[260px]">You may be offline or Firestore rules are blocking reads. Saved logs will appear here once synced.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold card-interactive"
+            >
+              Retry
+            </button>
+          </div>
         ) : displayActivities.length === 0 ? (
           <EmptyState
             icon="child_care"
