@@ -1,16 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import { getAppVersion } from '../utils/updateManager';
+import { getAllActivities } from '../services/demoLogger';
 
 export default function Profile() {
-  const { currentUser, userRole, logout } = useAuth();
+  const { currentUser, userRole, logout, linkKey } = useAuth();
   const toast = useToast();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [stats, setStats] = useState({ daysActive: '—', logs: '—' });
 
   const userName = currentUser?.email ? currentUser.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : (userRole === 'parent' ? 'Parent' : 'Caregiver');
+
+  useEffect(() => {
+    if (!linkKey) return;
+    getAllActivities(linkKey).then((data) => {
+      const totalLogs = data.length || 0;
+      // Count unique days with activity
+      const uniqueDays = new Set(data.map(a => a.created_at ? new Date(a.created_at).toDateString() : null).filter(Boolean)).size;
+      setStats({
+        daysActive: uniqueDays > 0 ? `${uniqueDays}` : '0',
+        logs: totalLogs > 0 ? `${totalLogs}` : '0',
+      });
+    }).catch(() => {
+      setStats({ daysActive: '0', logs: '0' });
+    });
+  }, [linkKey]);
 
   const settingsItems = [
     { icon: 'notifications', label: 'Notifications', subtitle: 'Alert preferences' },
@@ -63,8 +80,8 @@ export default function Profile() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2 animate-fade-in-up" style={{ animationDelay: '0.03s' }}>
         {[
-          { label: 'Days Active', value: '45', icon: 'calendar_today' },
-          { label: 'Logs', value: '128', icon: 'edit_note' },
+          { label: 'Days Active', value: stats.daysActive, icon: 'calendar_today' },
+          { label: 'Logs', value: stats.logs, icon: 'edit_note' },
         ].map((stat, i) => (
           <div key={i} className="card p-3 text-center">
             <span className="material-symbols-outlined text-[18px] text-outline">{stat.icon}</span>
