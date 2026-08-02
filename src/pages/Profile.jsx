@@ -11,6 +11,13 @@ export default function Profile() {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [stats, setStats] = useState({ daysActive: '—', logs: '—' });
+  const [careTeam, setCareTeam] = useState([
+    { name: 'Sarah M.', role: 'Primary Caregiver', initials: 'SM' },
+    { name: 'James K.', role: 'Physiotherapist', initials: 'JK' },
+    { name: 'Nurse Amy', role: 'Registered Nurse', initials: 'NA' },
+  ]);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [newMember, setNewMember] = useState({ name: '', role: '' });
 
   const userName = currentUser?.email ? currentUser.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : (userRole === 'parent' ? 'Parent' : 'Caregiver');
 
@@ -35,12 +42,6 @@ export default function Profile() {
     { icon: 'language', label: 'Language', subtitle: 'English' },
     { icon: 'help', label: 'Help & Support', subtitle: 'FAQ, contact' },
     { icon: 'info', label: 'About', subtitle: `v${getAppVersion()}` },
-  ];
-
-  const careTeam = [
-    { name: 'Sarah M.', role: 'Primary Caregiver', initials: 'SM' },
-    { name: 'James K.', role: 'Physiotherapist', initials: 'JK' },
-    { name: 'Nurse Amy', role: 'Registered Nurse', initials: 'NA' },
   ];
 
   async function handleLogout() {
@@ -95,7 +96,16 @@ export default function Profile() {
       <div className="animate-fade-in-up" style={{ animationDelay: '0.06s' }}>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Care Team</h2>
-          <span className="text-[10px] text-outline font-medium">{careTeam.length} members</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-outline font-medium">{careTeam.length} members</span>
+            <button
+              onClick={() => setShowAddMember(true)}
+              className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center card-interactive"
+              aria-label="Add care team member"
+            >
+              <span className="material-symbols-outlined text-primary text-[14px]">add</span>
+            </button>
+          </div>
         </div>
         <div className="card overflow-hidden">
           <div className="divide-y divide-outline-variant/15">
@@ -108,6 +118,17 @@ export default function Profile() {
                   <p className="text-sm font-semibold text-on-surface">{member.name}</p>
                   <p className="text-xs text-outline">{member.role}</p>
                 </div>
+                <button
+                  onClick={() => {
+                    const updated = careTeam.filter((_, idx) => idx !== i);
+                    setCareTeam(updated);
+                    toast.success('Team member removed');
+                  }}
+                  className="w-8 h-8 bg-surface-container-low rounded-lg flex items-center justify-center card-interactive hover:bg-error-container"
+                  aria-label={`Remove ${member.name}`}
+                >
+                  <span className="material-symbols-outlined text-outline text-[16px]">close</span>
+                </button>
                 <button className="w-8 h-8 bg-surface-container-low rounded-lg flex items-center justify-center card-interactive hover:bg-surface-container transition-colors" aria-label={`Chat with ${member.name}`}>
                   <span className="material-symbols-outlined text-on-surface-variant text-[18px]">chat</span>
                 </button>
@@ -116,6 +137,51 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Add Care Team Member Modal */}
+      {showAddMember && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 animate-slide-up shadow-lg">
+            <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-4" />
+            <h2 className="text-lg font-bold text-on-surface mb-4">Add Team Member</h2>
+            <div className="flex flex-col gap-3">
+              <input
+                value={newMember.name}
+                onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+                placeholder="Full name"
+                className="glass-input"
+              />
+              <input
+                value={newMember.role}
+                onChange={(e) => setNewMember({ ...newMember, role: e.target.value })}
+                placeholder="Role / Relationship"
+                className="glass-input"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowAddMember(false)}
+                  className="flex-1 bg-surface-container-low text-on-surface py-2.5 rounded-xl font-semibold text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (!newMember.name.trim()) return;
+                    const initials = newMember.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                    setCareTeam([...careTeam, { name: newMember.name.trim(), role: newMember.role.trim() || 'Care Team Member', initials }]);
+                    setShowAddMember(false);
+                    setNewMember({ name: '', role: '' });
+                    toast.success('Team member added');
+                  }}
+                  className="flex-1 bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-sm"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Settings */}
       <div className="animate-fade-in-up" style={{ animationDelay: '0.09s' }}>

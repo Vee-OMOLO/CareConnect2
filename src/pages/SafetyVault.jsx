@@ -11,7 +11,7 @@ const defaultContacts = [
   { name: '911 Emergency', role: 'Emergency Services', phone: '911', isPrimary: false },
 ];
 
-const medicalInfo = [
+const defaultMedicalInfo = [
   { label: 'Blood Type', value: 'O+', icon: 'bloodtype' },
   { label: 'Allergies', value: 'Penicillin, Sulfa drugs', icon: 'warning' },
   { label: 'Conditions', value: 'Hypertension, Type 2 Diabetes', icon: 'medical_information' },
@@ -79,7 +79,9 @@ export default function SafetyVault() {
   const [showEditContact, setShowEditContact] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [showEmergency, setShowEmergency] = useState(false);
+  const [editingMedical, setEditingMedical] = useState(null);
   const [contacts, setContacts] = useState(defaultContacts);
+  const [medicalInfo, setMedicalInfo] = useState(defaultMedicalInfo);
   const [newContact, setNewContact] = useState({ name: '', role: '', phone: '' });
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const primaryContact = contacts.find(c => c.isPrimary);
@@ -93,8 +95,18 @@ function loadContactsOffline() {
   return defaultContacts;
 }
 
+function saveMedicalInfoOffline(data) {
+  try { localStorage.setItem('careconnect-medical-info', JSON.stringify(data)); } catch { /* silent */ }
+}
+
+function loadMedicalInfoOffline() {
+  try { const saved = localStorage.getItem('careconnect-medical-info'); if (saved) return JSON.parse(saved); } catch { /* silent */ }
+  return defaultMedicalInfo;
+}
+
   useEffect(() => {
     setContacts(loadContactsOffline());
+    setMedicalInfo(loadMedicalInfoOffline());
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
@@ -206,7 +218,16 @@ function loadContactsOffline() {
 
       {/* Medical Info */}
       <div className="animate-fade-in-up" style={{ animationDelay: '0.06s' }}>
-        <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Medical Info</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Medical Info</h2>
+          <button
+            onClick={() => setEditingMedical(null)}
+            className="w-8 h-8 rounded-lg bg-surface-container-low flex items-center justify-center card-interactive"
+            aria-label="Edit medical info"
+          >
+            <span className="material-symbols-outlined text-on-surface-variant text-[16px]">edit</span>
+          </button>
+        </div>
         <div className="card overflow-hidden">
           <div className="divide-y divide-outline-variant/15">
             {medicalInfo.map((info, i) => (
@@ -216,8 +237,31 @@ function loadContactsOffline() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] text-outline font-medium">{info.label}</p>
-                  <p className="text-sm font-semibold text-on-surface">{info.value}</p>
+                  {editingMedical === i ? (
+                    <input
+                      defaultValue={info.value}
+                      onBlur={(e) => {
+                        const updated = [...medicalInfo];
+                        updated[i] = { ...updated[i], value: e.target.value || 'Not set' };
+                        setMedicalInfo(updated);
+                        saveMedicalInfoOffline(updated);
+                        setEditingMedical(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.target.blur();
+                      }}
+                      className="text-sm font-semibold text-on-surface bg-transparent border-b border-primary outline-none w-full"
+                      autoFocus
+                    />
+                  ) : (
+                    <p className="text-sm font-semibold text-on-surface">{info.value}</p>
+                  )}
                 </div>
+                {editingMedical !== i && (
+                  <button onClick={() => setEditingMedical(i)} className="w-8 h-8 bg-surface-container-low rounded-lg flex items-center justify-center card-interactive">
+                    <span className="material-symbols-outlined text-outline text-[16px]">edit</span>
+                  </button>
+                )}
               </div>
             ))}
           </div>

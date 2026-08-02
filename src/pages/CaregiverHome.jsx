@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllActivities } from '../services/demoLogger';
+import { getAllActivities, getAllEvents } from '../services/demoLogger';
 import EmergencyDashboard from '../components/EmergencyDashboard';
 import { activityColors, activityTypes } from '../constants/activityData';
 import { SkeletonTimeline } from '../components/Skeleton';
@@ -12,11 +12,12 @@ export default function CaregiverHome() {
   const { currentUser, linkKey, childName, parentEmail } = useAuth();
   const [showEmergency, setShowEmergency] = useState(false);
   const [activities, setActivities] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!linkKey) { setActivities([]); setLoading(false); return; }
+    if (!linkKey) { setActivities([]); setEvents([]); setLoading(false); return; }
     setActivities([]);
     setLoading(true);
     setError(false);
@@ -29,6 +30,13 @@ export default function CaregiverHome() {
     }).catch(() => {
       setLoading(false);
       setError(true);
+    });
+    
+    // Load calendar events
+    getAllEvents(linkKey).then((data) => {
+      setEvents(data);
+    }).catch(() => {
+      setEvents([]);
     });
   }, [linkKey]);
 
@@ -111,6 +119,20 @@ export default function CaregiverHome() {
         </div>
       </div>
 
+      {/* Calendar Link */}
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.05s' }}>
+        <button
+          onClick={() => navigate('/caregiver/calendar')}
+          className="w-full card p-3 flex items-center justify-between card-interactive"
+        >
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-[20px]">calendar_month</span>
+            <span className="text-sm font-semibold text-on-surface">View Calendar</span>
+          </div>
+          <span className="material-symbols-outlined text-outline text-[18px]">{events.length > 0 ? `${events.length} event${events.length > 1 ? 's' : ''}` : 'No events yet'}</span>
+        </button>
+      </div>
+
       {/* Recent Logs */}
       <div className="animate-fade-in-up" style={{ animationDelay: '0.06s' }}>
         <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Today's Log</h2>
@@ -161,6 +183,33 @@ export default function CaregiverHome() {
           </div>
         )}
       </div>
+
+      {/* Calendar Events */}
+      {events.length > 0 && (
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.09s' }}>
+          <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Upcoming Events</h2>
+          <div className="flex flex-col gap-2">
+            {events.slice(0, 3).map((event, i) => (
+              <div key={i} className="card p-3 card-interactive">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: activityColors[event.type]?.bg || '#edeeef' }}>
+                    <span className="material-symbols-outlined text-[18px]" style={{ color: activityColors[event.type]?.text || '#44474c' }}>
+                      {activityTypes.find(a => a.type === event.type)?.icon || 'event'}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-on-surface break-words">{event.title}</p>
+                    <p className="text-xs text-outline mt-0.5">
+                      {event.date ? new Date(event.date).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Scheduled'}
+                    </p>
+                    {event.notes && <p className="text-xs text-on-surface-variant mt-0.5 break-words">{event.notes}</p>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Emergency Dashboard */}
       {showEmergency && (
