@@ -77,7 +77,7 @@ export default function LinkFamily() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs text-on-surface-variant">Connected Family</p>
-              <p className="text-sm font-semibold text-on-surface truncate">
+              <p className="text-sm font-semibold text-on-surface break-words">
                 {childName} <span className="font-normal text-on-surface-variant">· {parentEmail}</span>
               </p>
             </div>

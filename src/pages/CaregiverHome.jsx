@@ -47,7 +47,7 @@ export default function CaregiverHome() {
   <p className="text-sm text-on-surface-variant">{greeting}</p>
   <h1 className="text-2xl font-bold text-on-surface tracking-tight">{childName ? `Caring for ${childName}` : 'Child'}</h1>
   {parentEmail && (
-  <p className="text-xs text-outline truncate mt-0.5">Linked to {parentEmail}</p>
+  <p className="text-xs text-outline break-words mt-0.5">Linked to {parentEmail}</p>
   )}
   </div>
   <button
@@ -69,12 +69,12 @@ export default function CaregiverHome() {
             {parentEmail && childName ? (
               <>
                 <p className="text-xs text-on-surface-variant">Connected Family</p>
-                <p className="text-sm font-semibold text-on-surface truncate">{childName} <span className="font-normal text-on-surface-variant">· {parentEmail}</span></p>
+                <p className="text-sm font-semibold text-on-surface break-words">{childName} <span className="font-normal text-on-surface-variant">· {parentEmail}</span></p>
               </>
             ) : (
               <>
                 <p className="text-xs text-on-surface-variant">Family Link</p>
-                <p className="text-sm font-semibold text-on-surface truncate">Not connected yet</p>
+                <p className="text-sm font-semibold text-on-surface break-words">Not connected yet</p>
               </>
             )}
           </div>
@@ -100,7 +100,7 @@ export default function CaregiverHome() {
               style={{ backgroundColor: activityColors[a.type]?.bg }}
             >
               <span className="material-symbols-outlined text-[24px]" style={{ color: activityColors[a.type]?.text }}>{a.icon}</span>
-              <span className="text-xs font-semibold text-on-surface">{a.label}</span>
+              <span className="text-xs font-semibold text-on-surface text-center leading-tight">{a.label}</span>
             </button>
           ))}
         </div>
@@ -128,7 +128,7 @@ export default function CaregiverHome() {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-on-surface truncate">
+                    <p className="text-sm text-on-surface break-words">
                       {log.details?.option || log.activityType}
                       {log.details?.quantity ? ` — ${log.details.quantity}` : ''}
                     </p>

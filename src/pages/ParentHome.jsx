@@ -204,7 +204,7 @@ export default function ParentHome() {
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-on-surface truncate">
+                    <p className="text-sm text-on-surface break-words">
                       {item.activityType} — {item.details?.option || 'logged'}
                       {item.details?.quantity ? ` (${item.details.quantity})` : ''}
                     </p>

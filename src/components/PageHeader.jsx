@@ -5,7 +5,7 @@ export default memo(function PageHeader({ title, subtitle, onBack, rightAction }
   const navigate = useNavigate();
 
   return (
-    <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
         {onBack && (
           <button
@@ -17,8 +17,8 @@ export default memo(function PageHeader({ title, subtitle, onBack, rightAction }
           </button>
         )}
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-on-surface tracking-tight truncate">{title}</h1>
-          {subtitle && <p className="text-xs text-on-surface-variant mt-0.5 truncate">{subtitle}</p>}
+          <h1 className="text-xl font-bold text-on-surface tracking-tight break-words">{title}</h1>
+          {subtitle && <p className="text-xs text-on-surface-variant mt-0.5 break-words">{subtitle}</p>}
         </div>
       </div>
       {rightAction && <div className="flex-shrink-0">{rightAction}</div>}

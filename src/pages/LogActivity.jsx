@@ -142,7 +142,7 @@ export default function LogActivity() {
               <button
                 key={opt}
                 onClick={() => setSelectedOption(opt)}
-                className={`py-3 px-3 rounded-xl text-sm font-medium transition-all duration-150 ${
+                className={`py-3 px-3 rounded-xl text-sm font-medium text-center leading-snug transition-all duration-150 ${
                   selectedOption === opt
                     ? ''
                     : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'

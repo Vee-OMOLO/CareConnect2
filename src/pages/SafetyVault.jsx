@@ -140,7 +140,7 @@ export default function SafetyVault() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-sm font-semibold text-on-surface truncate">{contact.name}</p>
+                    <p className="text-sm font-semibold text-on-surface break-words">{contact.name}</p>
                     {contact.isPrimary && <span className="text-[9px] bg-medicine-bg text-medicine px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">Primary</span>}
                   </div>
                   <p className="text-xs text-outline mt-0.5">{contact.role}</p>
@@ -168,7 +168,7 @@ export default function SafetyVault() {
           <div className="divide-y divide-outline-variant/15">
             {medicalInfo.map((info, i) => (
               <div key={i} className="flex items-center gap-3 px-4 py-3">
-                <div className="w-8 h-8 bg-surface-container-low rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-9 h-9 bg-surface-container-low rounded-lg flex items-center justify-center flex-shrink-0">
                   <span className="material-symbols-outlined text-on-surface-variant text-[18px]">{info.icon}</span>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -190,7 +190,7 @@ export default function SafetyVault() {
             { name: 'Advance Directive', icon: 'description', type: 'play' },
             { name: 'Recent Lab Results', icon: 'lab', type: 'medicine' },
           ].map((doc, i) => (
-            <div key={i} className="card p-3" style={{ borderLeft: `3px solid ${activityColors[doc.type]?.text || '#74777d'}` }}>
+            <div key={i} className="card px-4 py-3" style={{ borderLeft: `3px solid ${activityColors[doc.type]?.text || '#74777d'}` }}>
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: activityColors[doc.type]?.bg || '#edeeef' }}>
                   <span className="material-symbols-outlined text-[18px]" style={{ color: activityColors[doc.type]?.text || '#44474c' }}>{doc.icon}</span>
