@@ -25,19 +25,21 @@ export default function LinkFamily() {
 
     setError('');
     setSaving(true);
-    // Local-first: save to localStorage/context immediately and navigate.
-    // Firestore persistence is best-effort so a denied write never blocks setup.
-    setParentEmail(email);
-    setChild(name);
-    if (currentUser) {
-      try {
+    try {
+      setParentEmail(email);
+      setChild(name);
+      if (currentUser) {
         await updateProfile({ parentEmail: email, childName: name });
-      } catch (e) {
-        console.error('Failed to persist family link:', e);
       }
+      toast.success(isLinked ? 'Family link updated!' : 'Family linked successfully!');
+      navigate('/caregiver');
+    } catch (e) {
+      console.error('Failed to persist family link:', e);
+      setError('Failed to link family. Please try again.');
+      toast.error('Link failed — check connection and try again');
+    } finally {
+      setSaving(false);
     }
-    toast.success(isLinked ? 'Family link updated!' : 'Family linked successfully!');
-    navigate('/caregiver');
   }
 
   async function handleRemove() {

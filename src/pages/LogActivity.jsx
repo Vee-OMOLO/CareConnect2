@@ -56,6 +56,11 @@ export default function LogActivity() {
       setError('No child profile found. Please complete setup.');
       return;
     }
+    if (!currentUser?.uid) {
+      setError('Session expired. Please log in again.');
+      toast.error('Please log in again');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -66,8 +71,8 @@ export default function LogActivity() {
           quantity: showQuantity ? quantity : undefined,
           notes: notes || undefined,
         },
-        caregiverId: currentUser?.uid || 'unknown',
-        caregiverEmail: currentUser?.email || 'unknown',
+        caregiverId: currentUser.uid,
+        caregiverEmail: currentUser.email,
       });
       if (result) {
         setSaved(true);
