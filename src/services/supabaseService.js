@@ -1,4 +1,4 @@
-import { getSupabase } from '../supabase';
+import { supabase } from '../supabase';
 
 // ============================================================================
 // Supabase data layer for CareConnect.
@@ -26,7 +26,7 @@ function mapRows(rows) {
 // Log an activity
 export async function logActivity(linkKey, activityData) {
   try {
-    const { data, error } = await getSupabase()
+    const { data, error } = await supabase
       .from('activity_logs')
       .insert({
         link_key: linkKey,
@@ -51,7 +51,7 @@ export async function logActivity(linkKey, activityData) {
 // Subscribe to real-time activity logs (initial fetch + realtime refresh)
 export function subscribeToActivities(linkKey, callback, onError) {
   let active = true;
-  const sb = getSupabase();
+  const sb = supabase;
 
   const load = async () => {
     try {
@@ -84,7 +84,7 @@ export function subscribeToActivities(linkKey, callback, onError) {
 // Create an emergency alert (sos_alerts row + a timeline entry)
 export async function createEmergencyAlert(linkKey, location, caregiverId = 'unknown') {
   try {
-    const { data, error } = await getSupabase()
+    const { data, error } = await supabase
       .from('sos_alerts')
       .insert({
         link_key: linkKey,
@@ -98,7 +98,7 @@ export async function createEmergencyAlert(linkKey, location, caregiverId = 'unk
     if (error) throw error;
 
     // Also add to activity timeline
-    await getSupabase().from('activity_logs').insert({
+    await supabase.from('activity_logs').insert({
       link_key: linkKey,
       child_id: linkKey,
       caregiver_id: caregiverId,
@@ -118,7 +118,7 @@ export async function createEmergencyAlert(linkKey, location, caregiverId = 'unk
 // Add a calendar event
 export async function addEvent(linkKey, eventData) {
   try {
-    const { data, error } = await getSupabase()
+    const { data, error } = await supabase
       .from('child_events')
       .insert({
         link_key: linkKey,
@@ -142,7 +142,7 @@ export async function addEvent(linkKey, eventData) {
 // Subscribe to events (initial fetch + realtime refresh)
 export function subscribeToEvents(linkKey, callback, onError) {
   let active = true;
-  const sb = getSupabase();
+  const sb = supabase;
 
   const load = async () => {
     try {
@@ -174,7 +174,7 @@ export function subscribeToEvents(linkKey, callback, onError) {
 // Save caregiver location (upsert — one row per caregiver)
 export async function saveCaregiverLocation(caregiverId, location) {
   try {
-    const { error } = await getSupabase()
+    const { error } = await supabase
       .from('caregiver_locations')
       .upsert(
         { caregiver_id: caregiverId, lat: location.lat, lng: location.lng, updated_at: new Date().toISOString() },
@@ -189,7 +189,7 @@ export async function saveCaregiverLocation(caregiverId, location) {
 // Subscribe to a caregiver's live location
 export function subscribeToCaregiverLocation(caregiverId, callback) {
   let active = true;
-  const sb = getSupabase();
+  const sb = supabase;
 
   const load = async () => {
     try {
@@ -229,7 +229,7 @@ export async function saveEmergencyContacts(linkKey, contacts) {
       is_primary: Boolean(c.isPrimary),
     }));
     if (rows.length === 0) return;
-    const { error } = await getSupabase().from('emergency_contacts').insert(rows);
+    const { error } = await supabase.from('emergency_contacts').insert(rows);
     if (error) throw error;
   } catch (e) {
     console.error('Error saving contacts:', e);
@@ -240,7 +240,7 @@ export async function saveEmergencyContacts(linkKey, contacts) {
 
 export async function getUserProfile(uid) {
   try {
-    const { data, error } = await getSupabase()
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('user_uid', uid)
@@ -255,7 +255,7 @@ export async function getUserProfile(uid) {
 
 export async function saveUserProfile(uid, data) {
   try {
-    const { error } = await getSupabase()
+    const { error } = await supabase
       .from('profiles')
       .upsert(
         {
@@ -278,7 +278,7 @@ export async function saveUserProfile(uid, data) {
 // Create/update the family row and add the user as a member.
 export async function ensureFamily(linkKey, { userUid, role, childName, parentEmail }) {
   try {
-    const sb = getSupabase();
+    const sb = supabase;
     const { data: fam, error: famError } = await sb
       .from('families')
       .upsert(
@@ -311,7 +311,7 @@ export async function ensureFamily(linkKey, { userUid, role, childName, parentEm
 
 export async function removeFamilyMembership(linkKey, userUid) {
   try {
-    const { error } = await getSupabase()
+    const { error } = await supabase
       .from('family_members')
       .delete()
       .eq('link_key', linkKey)
@@ -326,7 +326,7 @@ export async function removeFamilyMembership(linkKey, userUid) {
 
 export async function sendNotification(linkKey, { type, title, body, priority } = {}) {
   try {
-    const { error } = await getSupabase()
+    const { error } = await supabase
       .from('notifications')
       .insert({
         link_key: linkKey,

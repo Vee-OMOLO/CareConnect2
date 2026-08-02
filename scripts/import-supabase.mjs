@@ -1,13 +1,20 @@
 #!/usr/bin/env node
 // ============================================================================
-// Import supabase/migration/export.json → Supabase Postgres
+// Import supabase/migration/export.json → Supabase Postgres + Auth
 //
-// The service_role key is a SECRET — it is read from the environment or the
-// GIT.txt on the Desktop, never from the committed code.
+// The service_role key is a SECRET — it is read from the environment, never
+// from the committed code.
 //
 // Usage:
 //   $env:SUPABASE_SERVICE_ROLE="<service role key>" ; node scripts/import-supabase.mjs
 //   (or: node scripts/import-supabase.mjs --key <service role key>)
+//
+// Steps performed:
+//   1. For every exported Firebase user, create the matching Supabase auth
+//      user (by email) via the Admin API — they keep their data, then use
+//      "Forgot password" to set a new one. Firebase password hashes cannot
+//      be ported.
+//   2. Map old Firebase UIDs → new Supabase UUIDs and insert all data.
 //
 // Run AFTER supabase/schema.sql has been executed in the Supabase SQL Editor.
 // ============================================================================
@@ -39,8 +46,58 @@ try {
 // Service role bypasses RLS — local script only.
 const sb = createClient(URL, SERVICE_ROLE, { auth: { persistSession: false, autoRefreshToken: false } });
 
+// --- Supabase Auth admin helpers (REST, service role) ------------------------
+
+async function adminFindUser(email) {
+  const res = await fetch(`${URL}/auth/v1/admin/users?email=${encodeURIComponent(email)}`, {
+    headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}` },
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  return body.users?.[0] || null;
+}
+
+async function adminCreateUser(email, role) {
+  const password = Math.random().toString(36).slice(2) + 'Xy1!';
+  const res = await fetch(`${URL}/auth/v1/admin/users`, {
+    method: 'POST',
+    headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { migrated: true, role: role || null },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.msg || `Admin create failed (${res.status})`);
+  }
+  return (await res.json()).id;
+}
+
+async function ensureAuthUsers() {
+  const uidMap = new Map(); // old Firebase UID → new Supabase UUID
+  for (const u of exportData.users) {
+    const email = (u.email || '').trim().toLowerCase();
+    if (!email) continue;
+    const existing = await adminFindUser(email);
+    if (existing) {
+      uidMap.set(u.id, existing.id);
+      continue;
+    }
+    try {
+      const newId = await adminCreateUser(email, u.role);
+      uidMap.set(u.id, newId);
+      console.log(`Created auth user for ${email}`);
+    } catch (e) {
+      console.error(`Could not create auth user for ${email}:`, e.message);
+    }
+  }
+  return uidMap;
+}
+
 function ts(v) {
-  // Convert Firestore Timestamp-like { _seconds, _nanoseconds } / { seconds } → ISO
   if (!v) return null;
   if (typeof v === 'object') {
     const secs = v._seconds ?? v.seconds;
@@ -64,10 +121,17 @@ async function insertAll(table, rows, mapper) {
   }
 }
 
-// Build families + members from users/profiles
+// --- main ---------------------------------------------------------------------
+
+const uidMap = await ensureAuthUsers();
+console.log(`Mapped ${uidMap.size} of ${exportData.users.length} users to Supabase auth.`);
+
+// Build families + members from users/profiles (using NEW Supabase UUIDs)
 const seenFamilies = new Map();
 const familyMembers = [];
 for (const u of exportData.users) {
+  const newUid = uidMap.get(u.id);
+  if (!newUid) continue;
   const email = (u.email || '').toLowerCase();
   const childName = u.childName || u.child_name || '';
   const role = u.role || 'caregiver';
@@ -77,17 +141,17 @@ for (const u of exportData.users) {
     if (!seenFamilies.has(linkKey)) {
       seenFamilies.set(linkKey, {
         link_key: linkKey,
-        parent_uid: role === 'parent' ? u.id : null,
+        parent_uid: role === 'parent' ? newUid : null,
         child_name: childName,
         parent_email: parentEmail,
       });
     }
-    familyMembers.push({ link_key: linkKey, user_uid: u.id, role });
+    familyMembers.push({ link_key: linkKey, user_uid: newUid, role });
   }
 }
 
-await insertAll('profiles', exportData.users, (u) => ({
-  user_uid: u.id,
+await insertAll('profiles', exportData.users.filter(u => uidMap.has(u.id)), (u) => ({
+  id: uidMap.get(u.id),
   email: u.email || null,
   name: u.name || u.displayName || null,
   role: u.role || null,
@@ -101,7 +165,7 @@ await insertAll('family_members', familyMembers, (m) => m);
 await insertAll('activity_logs', exportData.activityLogs, (a) => ({
   link_key: a.linkKey || a.childId || a.link_key || '',
   child_id: a.childId || a.child_id || a.linkKey || a.link_key || null,
-  caregiver_id: a.caregiverId || a.caregiver_id || null,
+  caregiver_id: a.caregiverId && uidMap.has(a.caregiverId) ? uidMap.get(a.caregiverId) : null,
   caregiver_email: a.caregiverEmail || a.caregiver_email || null,
   activity_type: a.activityType || a.activity_type || null,
   details: a.details || {},
@@ -111,7 +175,7 @@ await insertAll('activity_logs', exportData.activityLogs, (a) => ({
 await insertAll('sos_alerts', exportData.sosAlerts, (s) => ({
   link_key: s.childId || s.linkKey || s.link_key || '',
   child_id: s.childId || s.child_id || s.linkKey || s.link_key || null,
-  caregiver_id: s.caregiverId || s.caregiver_id || null,
+  caregiver_id: s.caregiverId && uidMap.has(s.caregiverId) ? uidMap.get(s.caregiverId) : null,
   location: s.location || null,
   status: s.status || 'active',
   created_at: ts(s.createdAt) || ts(s.timestamp) || ts(s.created_at) || undefined,
@@ -126,7 +190,7 @@ await insertAll('child_events', exportData.childEvents, (e) => ({
   created_at: ts(e.createdAt) || ts(e.created_at) || undefined,
 }));
 await insertAll('caregiver_locations', exportData.caregiverLocations, (l) => ({
-  caregiver_id: l.caregiverId || l.caregiver_id || l.id,
+  caregiver_id: l.caregiverId && uidMap.has(l.caregiverId) ? uidMap.get(l.caregiverId) : l.id,
   link_key: l.linkKey || l.link_key || l.childId || null,
   lat: l.lat ?? l.location?.lat ?? null,
   lng: l.lng ?? l.location?.lng ?? null,
@@ -152,3 +216,4 @@ await insertAll('notifications', exportData.notifications, (n) => ({
 }));
 
 console.log(process.exitCode ? 'Import finished with errors.' : 'Import complete.');
+console.log('Note: migrated users can sign in with their email after using "Forgot password".');

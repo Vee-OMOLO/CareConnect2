@@ -24,10 +24,16 @@ export default function Register() {
     setError('');
     setLoading(true);
     try {
-      await signup(email, password);
-      navigate('/role-selection');
+      const data = await signup(email, password);
+      if (data.session) {
+        navigate('/role-selection');
+      } else {
+        // Email confirmation is enabled — user must verify before signing in.
+        setError('Account created! Check your email to confirm, then sign in.');
+      }
     } catch (err) {
-      setError(err.code === 'auth/email-already-in-use' ? 'An account with this email already exists' : 'Failed to create account');
+      const msg = (err && err.message) || '';
+      setError(msg.includes('already registered') ? 'An account with this email already exists' : 'Failed to create account');
     }
     setLoading(false);
   }

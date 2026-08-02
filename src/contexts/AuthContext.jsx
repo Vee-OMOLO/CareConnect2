@@ -1,12 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { auth } from '../firebase';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
-} from 'firebase/auth';
-import { initSupabase } from '../supabase';
+import { supabase } from '../supabase';
 import {
   buildLinkKey,
   getUserProfile,
@@ -33,15 +26,19 @@ export function AuthProvider({ children }) {
   const linkEmail = userRole === 'caregiver' && parentEmail ? parentEmail : currentUser?.email;
   const linkKey = linkEmail && childName ? buildLinkKey(linkEmail, childName) : null;
 
-  function signup(email, password) {
-    return createUserWithEmailAndPassword(auth, email, password);
+  async function signup(email, password) {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    return data;
   }
 
-  function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+  async function login(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data;
   }
 
-  function logout() {
+  async function logout() {
     setUserRole(null);
     setUserProfile(null);
     setChildName('');
@@ -51,7 +48,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('careconnect-role');
     localStorage.removeItem('careconnect-child');
     localStorage.removeItem('careconnect-parent-email');
-    return signOut(auth);
+    await supabase.auth.signOut();
   }
 
   function setRole(role) {
@@ -94,10 +91,9 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function loadProfile(user) {
-    if (!user) return;
+  async function loadProfile(uid) {
     try {
-      const data = await getUserProfile(user.uid);
+      const data = await getUserProfile(uid);
       if (data) {
         setUserProfile(data);
         if (data.role) {
@@ -126,17 +122,18 @@ export function AuthProvider({ children }) {
     if (savedChild) setChildName(savedChild);
     if (savedParentEmail) setParentEmailState(savedParentEmail);
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      // (Re)create the Supabase client for this Firebase user so every
-      // request carries their UID for RLS.
-      initSupabase(user?.uid || null);
-      setCurrentUser(user);
+    // Supabase session persistence is handled by supabase-js; this listener
+    // keeps React state in sync with sign-in/sign-out/refresh events.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const user = session?.user || null;
+      setCurrentUser(user ? { uid: user.id, email: user.email, ...user } : null);
       if (user) {
-        await loadProfile(user);
+        loadProfile(user.id);
       }
       setLoading(false);
     });
-    return unsubscribe;
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const value = {

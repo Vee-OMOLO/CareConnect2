@@ -1,10 +1,27 @@
 // Single source of truth for the app version shown in the UI and used for
 // update detection. Keep in sync with package.json and public/version.json.
-export const APP_VERSION = '1.1.1';
+export const APP_VERSION = '1.2.0';
 
 // Changelog shown once per version in the "What's New" sheet.
 // Each entry: { icon, title, description }
 export const CHANGELOG = {
+  '1.2.0': [
+    {
+      icon: 'database',
+      title: 'Everything now runs on Supabase',
+      description: 'Accounts, activity logs, alerts, and locations all live in one secure Postgres database — faster and simpler than before.',
+    },
+    {
+      icon: 'verified_user',
+      title: 'One login for the whole family',
+      description: 'Sign-in and sign-up are handled by Supabase Auth with email confirmation. Existing accounts keep their data.',
+    },
+    {
+      icon: 'cloud_sync',
+      title: 'Sync blockers are gone',
+      description: 'The old Firestore rules that silently blocked saving are gone — real-time family sharing now just works.',
+    },
+  ],
   '1.1.1': [
     {
       icon: 'cloud_sync',
