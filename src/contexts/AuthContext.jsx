@@ -7,17 +7,12 @@ import {
   onAuthStateChanged
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { buildLinkKey } from '../services/firestoreService';
 
 const AuthContext = createContext();
 
 export function useAuth() {
   return useContext(AuthContext);
-}
-
-export function buildLinkKey(parentEmail, childName) {
-  const email = parentEmail.trim().toLowerCase();
-  const name = childName.trim().toLowerCase().replace(/\s+/g, ' ');
-  return `${email}_${name}`;
 }
 
 export function AuthProvider({ children }) {

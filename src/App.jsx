@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from './contexts/AuthContext';
+import { processOfflineQueue } from './services/firestoreService';
 import ErrorBoundary from './components/ErrorBoundary';
 import BottomNav from './components/BottomNav';
 import OfflineBanner from './components/OfflineBanner';
@@ -43,6 +45,15 @@ function Page({ children }) {
 
 export default function App() {
   const { currentUser, userRole, accountVersion } = useAuth();
+
+  // Flush any offline-queued actions (activities, SOS, events) on boot
+  // and whenever the connection comes back.
+  useEffect(() => {
+    processOfflineQueue();
+    const handleOnline = () => processOfflineQueue();
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
 
   const isAuthPage = !currentUser || !userRole;
 

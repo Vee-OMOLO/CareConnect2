@@ -1,11 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 
 export default function Profile() {
-  const navigate = useNavigate();
   const { currentUser, userRole, logout } = useAuth();
   const toast = useToast();
   const [showEditProfile, setShowEditProfile] = useState(false);

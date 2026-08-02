@@ -6,7 +6,7 @@ import PageHeader from '../components/PageHeader';
 
 export default function LinkFamily() {
   const navigate = useNavigate();
-  const { childName, parentEmail, setChild, setParentEmail, updateProfile } = useAuth();
+  const { currentUser, childName, parentEmail, setChild, setParentEmail, updateProfile } = useAuth();
   const toast = useToast();
   const [childNameInput, setChildNameInput] = useState(childName || '');
   const [parentEmailInput, setParentEmailInput] = useState(parentEmail || '');
@@ -25,34 +25,36 @@ export default function LinkFamily() {
 
     setError('');
     setSaving(true);
-    try {
-      setParentEmail(email);
-      setChild(name);
-      await updateProfile({ parentEmail: email, childName: name });
-      toast.success(isLinked ? 'Family link updated!' : 'Family linked successfully!');
-      navigate('/caregiver');
-    } catch (e) {
-      console.error('Failed to save family link:', e);
-      setError('Could not save the link. Please try again.');
-      setSaving(false);
+    // Local-first: save to localStorage/context immediately and navigate.
+    // Firestore persistence is best-effort so a denied write never blocks setup.
+    setParentEmail(email);
+    setChild(name);
+    if (currentUser) {
+      try {
+        await updateProfile({ parentEmail: email, childName: name });
+      } catch (e) {
+        console.error('Failed to persist family link:', e);
+      }
     }
+    toast.success(isLinked ? 'Family link updated!' : 'Family linked successfully!');
+    navigate('/caregiver');
   }
 
   async function handleRemove() {
     if (!window.confirm('Remove the link to this family? You will no longer share activity logs with this parent.')) return;
     setSaving(true);
     setError('');
-    try {
-      setParentEmail('');
-      setChild('');
-      await updateProfile({ parentEmail: '', childName: '' });
-      toast.info('Family link removed');
-      navigate('/caregiver');
-    } catch (e) {
-      console.error('Failed to remove family link:', e);
-      setError('Could not remove the link. Please try again.');
-      setSaving(false);
+    setParentEmail('');
+    setChild('');
+    if (currentUser) {
+      try {
+        await updateProfile({ parentEmail: '', childName: '' });
+      } catch (e) {
+        console.error('Failed to remove family link from Firestore:', e);
+      }
     }
+    toast.info('Family link removed');
+    navigate('/caregiver');
   }
 
   return (

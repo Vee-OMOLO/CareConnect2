@@ -145,7 +145,7 @@ export default function CaregiverHome() {
 
       {/* Emergency Dashboard */}
       {showEmergency && (
-        <EmergencyDashboard onClose={() => setShowEmergency(false)} linkKey={linkKey} />
+        <EmergencyDashboard onClose={() => setShowEmergency(false)} linkKey={linkKey} caregiverId={currentUser?.uid} />
       )}
     </div>
   );

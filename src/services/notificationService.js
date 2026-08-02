@@ -75,7 +75,7 @@ function getNotificationBody(type, details) {
 // Show local notification (for foreground)
 export function showLocalNotification(title, body) {
   if ('Notification' in window && Notification.permission === 'granted') {
-    new Notification(title, { body, icon: '/icon-192.png' });
+    new Notification(title, { body, icon: '/icon-192.svg' });
   }
 }
 

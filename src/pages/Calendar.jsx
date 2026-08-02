@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageHeader from '../components/PageHeader';
 import { activityColors } from '../constants/activityData';
+import { subscribeToEvents } from '../services/firestoreService';
+import { useAuth } from '../contexts/AuthContext';
 
 const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+// Fallback visual data — real events stream from Firestore when a family is linked
 const sampleEvents = [
   { day: 8, type: 'medicine', label: 'Med' },
   { day: 12, type: 'health', label: 'Appt' },
@@ -13,15 +16,56 @@ const sampleEvents = [
   { day: 25, type: 'health', label: 'Check' },
 ];
 
-const upcomingEvents = [
+const sampleUpcomingEvents = [
   { title: 'Blood pressure check', time: 'Today, 2:00 PM', type: 'health', icon: 'favorite' },
   { title: 'Medication refill reminder', time: 'Tomorrow, 9:00 AM', type: 'medicine', icon: 'medication' },
   { title: 'Doctor appointment', time: 'Mar 20, 10:30 AM', type: 'health', icon: 'local_hospital' },
 ];
 
+const eventIcons = { medicine: 'medication', health: 'local_hospital', feeding: 'restaurant', play: 'child_care' };
+
 export default function Calendar() {
+  const { linkKey } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [direction, setDirection] = useState(0);
+  const [events, setEvents] = useState(sampleEvents);
+  const [upcoming, setUpcoming] = useState(sampleUpcomingEvents);
+
+  // Stream real events from Firestore; fall back to sample visuals when
+  // there is no link or the subscription fails.
+  useEffect(() => {
+    if (!linkKey) {
+      setEvents(sampleEvents);
+      setUpcoming(sampleUpcomingEvents);
+      return undefined;
+    }
+
+    const unsub = subscribeToEvents(linkKey, (data) => {
+      if (data.length === 0) return; // keep fallback visuals while empty
+      setEvents(data.map(ev => {
+        const d = ev.date ? new Date(ev.date) : null;
+        return {
+          day: d ? d.getDate() : null,
+          type: ev.type || 'health',
+          label: ev.title || ev.type || 'Event',
+          date: ev.date,
+        };
+      }));
+      setUpcoming(data.map(ev => ({
+        title: ev.title || 'Event',
+        time: ev.date
+          ? new Date(ev.date).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : 'Scheduled',
+        type: ev.type || 'health',
+        icon: eventIcons[ev.type] || 'event',
+      })));
+    }, () => {
+      setEvents(sampleEvents);
+      setUpcoming(sampleUpcomingEvents);
+    });
+
+    return unsub;
+  }, [linkKey]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -95,7 +139,7 @@ export default function Calendar() {
             className="grid grid-cols-7 gap-1"
           >
             {calendarDays.map((d, i) => {
-              const event = sampleEvents.find(e => e.day === d.day && d.currentMonth);
+              const event = events.find(e => e.day === d.day && d.currentMonth);
               return (
                 <button
                   key={i}
@@ -117,10 +161,10 @@ export default function Calendar() {
         </AnimatePresence>
 
         {/* Legend */}
-        {sampleEvents.length > 0 && (
+        {events.length > 0 && (
           <div className="flex items-center gap-3 mt-3 pt-3 border-t border-outline-variant/15">
             <span className="text-[10px] text-outline font-medium">Events:</span>
-            {[...new Set(sampleEvents.map(e => e.type))].map(type => (
+            {[...new Set(events.map(e => e.type))].map(type => (
               <div key={type} className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: activityColors[type]?.text }} />
                 <span className="text-[10px] text-on-surface-variant capitalize">{type}</span>
@@ -134,7 +178,7 @@ export default function Calendar() {
       <div className="animate-fade-in-up" style={{ animationDelay: '0.03s' }}>
         <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Upcoming</h2>
         <div className="flex flex-col gap-2">
-          {upcomingEvents.map((event, i) => {
+          {upcoming.map((event, i) => {
             const c = activityColors[event.type];
             return (
               <div key={i} className="card p-3 card-interactive" style={{ borderLeft: `3px solid ${c?.text || '#74777d'}` }}>

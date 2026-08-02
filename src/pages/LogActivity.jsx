@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { logActivity } from '../services/firestoreService';
+import { notifyParent } from '../services/notificationService';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import ActivityChip from '../components/ActivityChip';
@@ -25,6 +26,31 @@ export default function LogActivity() {
   const currentType = activityTypes.find(a => a.type === selectedType);
   const showQuantity = selectedType === 'feeding' || selectedType === 'medicine';
 
+  // No linked family yet — prompt instead of writing to a null path
+  if (!linkKey) {
+    return (
+      <div className="flex flex-col gap-4">
+        <PageHeader title="Log Activity" onBack />
+        <div className="card p-8 flex flex-col items-center text-center animate-fade-in-up">
+          <div className="w-14 h-14 rounded-2xl bg-surface-container-low flex items-center justify-center mb-4">
+            <span className="material-symbols-outlined text-outline text-[28px]">family_restroom</span>
+          </div>
+          <h3 className="text-base font-bold text-on-surface mb-1">Link a family first</h3>
+          <p className="text-sm text-on-surface-variant max-w-[260px]">Connect to a parent &amp; child before logging activities.</p>
+          <button
+            onClick={() => navigate('/caregiver/link')}
+            className="mt-4 px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-semibold card-interactive"
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[18px]">link</span>
+              Link Now
+            </span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   async function handleSave() {
     if (!linkKey) {
       setError('No child profile found. Please complete setup.');
@@ -46,6 +72,12 @@ export default function LogActivity() {
       if (result) {
         setSaved(true);
         toast.success('Activity logged successfully!');
+        // Notify the linked parent (best-effort, non-blocking)
+        notifyParent(linkKey, selectedType, {
+          option: selectedOption,
+          quantity: showQuantity ? quantity : undefined,
+          notes: notes || undefined,
+        }).catch(() => {});
         setTimeout(() => navigate('/caregiver'), 1000);
       } else {
         setError('Failed to save. Will retry when online.');

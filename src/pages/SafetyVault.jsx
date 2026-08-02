@@ -50,13 +50,14 @@ function AddContactModal({ newContact, setNewContact, onSave, onClose }) {
 }
 
 export default function SafetyVault() {
-  const { linkKey } = useAuth();
+  const { linkKey, currentUser } = useAuth();
   const toast = useToast();
   const [showAddContact, setShowAddContact] = useState(false);
   const [showEmergency, setShowEmergency] = useState(false);
   const [contacts, setContacts] = useState(defaultContacts);
   const [newContact, setNewContact] = useState({ name: '', role: '', phone: '' });
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const primaryContact = contacts.find(c => c.isPrimary);
 
   function saveContactsOffline(data) {
     try { localStorage.setItem('careconnect-emergency-contacts', JSON.stringify(data)); } catch (e) { /* silent */ }
@@ -84,7 +85,7 @@ export default function SafetyVault() {
     saveContactsOffline(updated);
     if (isOnline) {
       try {
-        const linkKey = localStorage.getItem('careconnect-link-key');
+        // linkKey comes from AuthContext (set when a family link is created)
         await addDoc(collection(db, 'emergencyContacts'), { ...contact, childId: linkKey, createdAt: new Date().toISOString() });
       } catch { /* silent */ }
     }
@@ -216,7 +217,12 @@ export default function SafetyVault() {
 
       {/* Emergency Dashboard */}
       {showEmergency && (
-        <EmergencyDashboard onClose={() => setShowEmergency(false)} linkKey={linkKey} />
+        <EmergencyDashboard
+          onClose={() => setShowEmergency(false)}
+          linkKey={linkKey}
+          caregiverId={currentUser?.uid}
+          emergencyPhone={primaryContact?.phone}
+        />
       )}
     </div>
   );

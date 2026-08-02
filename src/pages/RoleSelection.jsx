@@ -1,62 +1,38 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { useToast } from '../components/Toast';
 
 export default function RoleSelection() {
   const navigate = useNavigate();
-  const { currentUser, setRole, setChild, setParentEmail } = useAuth();
-  const [childName, setChildNameInput] = useState('');
-  const [parentEmailInput, setParentEmailInput] = useState('');
+  const { currentUser, setRole, updateProfile } = useAuth();
+  const toast = useToast();
   const [selectedRole, setSelectedRole] = useState(null);
-  const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-
-  async function handleConfirm() {
-    if (!childName.trim()) {
-      setError("Please enter your child's name");
-      return;
-    }
-    if (selectedRole === 'caregiver' && !parentEmailInput.trim()) {
-      setError("Please enter the parent's email");
-      return;
-    }
-    if (selectedRole === 'caregiver' && parentEmailInput.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmailInput.trim())) {
-      setError("Please enter a valid email address");
-      return;
-    }
-    setError('');
-    setSaving(true);
-    try {
-      const role = selectedRole;
-      if (currentUser) {
-        const profileData = {
-          role,
-          childName: childName.trim(),
-          email: currentUser.email,
-          createdAt: serverTimestamp(),
-        };
-        if (role === 'caregiver') {
-          profileData.parentEmail = parentEmailInput.trim().toLowerCase();
-        }
-        await setDoc(doc(db, 'users', currentUser.uid), profileData, { merge: true });
-      }
-      setRole(role);
-      setChild(childName.trim());
-      if (role === 'caregiver') {
-        setParentEmail(parentEmailInput.trim().toLowerCase());
-      }
-      navigate(role === 'parent' ? '/parent' : '/caregiver');
-    } catch (e) {
-      console.error('Failed to save profile:', e);
-      setSaving(false);
-    }
-  }
 
   function handleSelectRole(role) {
     setSelectedRole(role);
-    setError('');
+  }
+
+  async function handleConfirm() {
+    const role = selectedRole;
+    setSaving(true);
+
+    // Local-first: set the role and navigate immediately.
+    // The app must NEVER block on Firestore here — a denied write or a slow
+    // network previously left users stuck on this page with no feedback.
+    setRole(role);
+    navigate(role === 'parent' ? '/parent' : '/caregiver');
+
+    // Best-effort persistence to Firestore (non-blocking).
+    if (currentUser) {
+      try {
+        await updateProfile({ role, email: currentUser.email });
+      } catch (e) {
+        console.error('Failed to persist role to Firestore:', e);
+        toast.error('Role saved on this device — will sync when connected');
+      }
+    }
   }
 
   return (
@@ -73,36 +49,6 @@ export default function RoleSelection() {
           <h2 className="text-2xl font-bold text-on-surface mb-1">Who are you?</h2>
           <p className="text-sm text-on-surface-variant">Select your role to get started</p>
         </div>
-
-        {error && (
-          <div className="flex items-center gap-2 bg-error-container text-on-error-container px-4 py-3 rounded-xl mb-4 text-sm font-medium animate-shake">
-            <span className="material-symbols-outlined text-[16px]">error</span>
-            {error}
-          </div>
-        )}
-
-        <div className="mb-4">
-          <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">Child's Name</label>
-          <input
-            value={childName}
-            onChange={(e) => setChildNameInput(e.target.value)}
-            placeholder="e.g. Olivia"
-            className="auth-input"
-          />
-        </div>
-
-        {selectedRole === 'caregiver' && (
-          <div className="mb-4 animate-fade-in-up">
-            <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">Parent's Email</label>
-            <input
-              value={parentEmailInput}
-              onChange={(e) => setParentEmailInput(e.target.value)}
-              placeholder="parent@example.com"
-              type="email"
-              className="auth-input"
-            />
-          </div>
-        )}
 
         <div className="flex flex-col gap-3">
           {!selectedRole ? (
@@ -142,10 +88,10 @@ export default function RoleSelection() {
                 disabled={saving}
                 className="auth-button bg-primary text-on-primary"
               >
-                {saving ? 'Saving...' : selectedRole === 'parent' ? 'Continue as Parent' : 'Continue as Caregiver'}
+                {saving ? 'Setting up...' : selectedRole === 'parent' ? 'Continue as Parent' : 'Continue as Caregiver'}
               </button>
               <button
-                onClick={() => { setSelectedRole(null); setError(''); setParentEmailInput(''); }}
+                onClick={() => setSelectedRole(null)}
                 className="auth-button bg-surface-container-low text-on-surface-variant"
               >
                 Back
@@ -153,6 +99,12 @@ export default function RoleSelection() {
             </>
           )}
         </div>
+
+        {selectedRole === 'caregiver' && (
+          <p className="text-center text-[11px] text-outline mt-6">
+            After setup, connect to a family from your dashboard using the parent's email &amp; child's name.
+          </p>
+        )}
 
         <p className="text-center text-[11px] text-outline mt-8">
           Works offline — data syncs when connected

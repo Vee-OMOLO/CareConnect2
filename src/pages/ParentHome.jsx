@@ -221,7 +221,7 @@ export default function ParentHome() {
 
       {/* Emergency Dashboard */}
       {showEmergency && (
-        <EmergencyDashboard onClose={() => setShowEmergency(false)} linkKey={linkKey} />
+        <EmergencyDashboard onClose={() => setShowEmergency(false)} linkKey={linkKey} caregiverId={currentUser?.uid} />
       )}
     </div>
   );

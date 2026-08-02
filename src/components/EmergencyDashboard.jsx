@@ -11,7 +11,7 @@ const emergencyTypes = [
   { type: 'choking', label: 'Choking', icon: 'no_meals', color: '#E85D75', bg: '#FDE8EC' },
 ];
 
-export default function EmergencyDashboard({ onClose, linkKey }) {
+export default function EmergencyDashboard({ onClose, linkKey, caregiverId, emergencyPhone = '911' }) {
   const [selectedType, setSelectedType] = useState(null);
   const [customEmergency, setCustomEmergency] = useState('');
   const [emergencyLoading, setEmergencyLoading] = useState(false);
@@ -41,7 +41,7 @@ export default function EmergencyDashboard({ onClose, linkKey }) {
     if (!linkKey) return;
     setEmergencyLoading(true);
     try {
-      await createEmergencyAlert(linkKey, location);
+      await createEmergencyAlert(linkKey, location, caregiverId || 'unknown');
       await notifyEmergency(linkKey, location).catch(() =>
         console.warn('Emergency recorded but parent notification failed')
       );
@@ -55,8 +55,8 @@ export default function EmergencyDashboard({ onClose, linkKey }) {
     }
   }
 
-  function handleCall911() {
-    window.location.href = 'tel:911';
+  function handleCallEmergency() {
+    window.location.href = `tel:${emergencyPhone.replace(/[^0-9+]/g, '')}`;
   }
 
   return (
@@ -153,15 +153,18 @@ export default function EmergencyDashboard({ onClose, linkKey }) {
             {/* Action Buttons */}
             <div className="flex flex-col gap-2">
               <button
-                onClick={handleCall911}
+                onClick={handleCallEmergency}
                 className="w-full py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 bg-secondary text-on-secondary active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-[20px]">call</span>
-                Call 911
+                Call {emergencyPhone || '911'}
               </button>
+              {!linkKey && (
+                <p className="text-[11px] text-center text-medicine font-medium">Link a family first to send alerts</p>
+              )}
               <button
                 onClick={handleSendAlert}
-                disabled={!selectedType || (selectedType === 'custom' && !customEmergency.trim()) || emergencyLoading}
+                disabled={!linkKey || !selectedType || (selectedType === 'custom' && !customEmergency.trim()) || emergencyLoading}
                 className="w-full py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 bg-primary text-on-primary disabled:opacity-40 active:scale-[0.98]"
               >
                 <span className="material-symbols-outlined text-[20px]">notification_important</span>

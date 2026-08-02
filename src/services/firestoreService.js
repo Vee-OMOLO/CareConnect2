@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import {
-  collection, addDoc, getDocs, query, where, onSnapshot,
-  doc, updateDoc, serverTimestamp, orderBy, limit
+  collection, addDoc, query, where, onSnapshot,
+  doc, setDoc, serverTimestamp, orderBy, limit
 } from 'firebase/firestore';
 
 // Build the composite link key from parent email + child name
@@ -49,10 +49,11 @@ export function subscribeToActivities(linkKey, callback, onError) {
 }
 
 // Create an emergency alert
-export async function createEmergencyAlert(linkKey, location) {
+export async function createEmergencyAlert(linkKey, location, caregiverId = 'unknown') {
   try {
     const docRef = await addDoc(collection(db, 'sosAlerts'), {
       childId: linkKey,
+      caregiverId,
       location: location,
       timestamp: serverTimestamp(),
       createdAt: new Date().toISOString(),
@@ -66,7 +67,7 @@ export async function createEmergencyAlert(linkKey, location) {
       location: location,
       timestamp: serverTimestamp(),
       createdAt: new Date().toISOString(),
-      caregiverId: 'current-user',
+      caregiverId,
     });
 
     return docRef.id;
@@ -95,7 +96,7 @@ export async function addEvent(linkKey, eventData) {
 }
 
 // Subscribe to events
-export function subscribeToEvents(linkKey, callback) {
+export function subscribeToEvents(linkKey, callback, onError) {
   const q = query(
     collection(db, 'child_events'),
     where('childId', '==', linkKey),
@@ -107,31 +108,24 @@ export function subscribeToEvents(linkKey, callback) {
       ...doc.data(),
     }));
     callback(events);
+  }, (error) => {
+    console.error('Events subscription error:', error);
+    if (onError) onError(error);
   });
 }
 
-// Save caregiver location
+// Save caregiver location (upsert — doc id == caregiver uid so subscriptions work)
 export async function saveCaregiverLocation(caregiverId, location) {
   try {
-    await updateDoc(doc(db, 'caregiver_locations', caregiverId), {
+    await setDoc(doc(db, 'caregiver_locations', caregiverId), {
+      caregiverId,
       lat: location.lat,
       lng: location.lng,
       timestamp: serverTimestamp(),
       updatedAt: new Date().toISOString(),
-    });
+    }, { merge: true });
   } catch (e) {
-    // Document might not exist, try creating
-    try {
-      await addDoc(collection(db, 'caregiver_locations'), {
-        caregiverId: caregiverId,
-        lat: location.lat,
-        lng: location.lng,
-        timestamp: serverTimestamp(),
-        createdAt: new Date().toISOString(),
-      });
-    } catch (e2) {
-      console.error('Error saving location:', e2);
-    }
+    console.error('Error saving location:', e);
   }
 }
 
