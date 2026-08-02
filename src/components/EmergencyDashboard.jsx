@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { createEmergencyAlert } from '../services/firestoreService';
+import { createEmergencyAlert } from '../services/supabaseService';
 import { notifyEmergency } from '../services/notificationService';
 
 const emergencyTypes = [

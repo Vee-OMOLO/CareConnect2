@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { logActivity } from '../services/firestoreService';
+import { logActivity } from '../services/supabaseService';
 import { notifyParent } from '../services/notificationService';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';

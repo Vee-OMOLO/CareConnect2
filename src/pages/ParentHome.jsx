@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { subscribeToActivities } from '../services/firestoreService';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { subscribeToActivities } from '../services/supabaseService';
 import { activityColors, activityIcons } from '../constants/activityData';
 import { SkeletonTimeline } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -11,7 +9,7 @@ import EmergencyDashboard from '../components/EmergencyDashboard';
 
 export default function ParentHome() {
   const navigate = useNavigate();
-  const { currentUser, linkKey, childName, setChild } = useAuth();
+  const { currentUser, linkKey, childName, setChild, updateProfile } = useAuth();
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -73,13 +71,10 @@ export default function ParentHome() {
     setChild(trimmed);
     if (currentUser) {
       try {
-        await setDoc(doc(db, 'users', currentUser.uid), {
-          childName: trimmed,
-          updatedAt: serverTimestamp(),
-        }, { merge: true });
+        await updateProfile({ childName: trimmed });
       } catch (e) {
-      console.error('Failed to save child name:', e);
-    }
+        console.error('Failed to save child name:', e);
+      }
     }
     setEditingChild(false);
   }

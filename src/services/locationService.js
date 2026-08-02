@@ -1,4 +1,4 @@
-import { saveCaregiverLocation } from './firestoreService';
+import { saveCaregiverLocation } from './supabaseService';
 
 let watchId = null;
 

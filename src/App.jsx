@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from './contexts/AuthContext';
-import { processOfflineQueue } from './services/firestoreService';
+import { processOfflineQueue } from './services/supabaseService';
 import { isNewVersion, startUpdateWatcher } from './utils/updateManager';
 import ErrorBoundary from './components/ErrorBoundary';
 import BottomNav from './components/BottomNav';

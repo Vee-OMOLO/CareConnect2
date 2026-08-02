@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { db } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import EmergencyDashboard from '../components/EmergencyDashboard';
 import { activityColors } from '../constants/activityData';
+import { saveEmergencyContacts } from '../services/supabaseService';
 
 const defaultContacts = [
   { name: 'Dr. Sarah Smith', role: 'Primary Care Physician', phone: '(555) 123-4567', isPrimary: true },
@@ -86,7 +85,7 @@ export default function SafetyVault() {
     if (isOnline) {
       try {
         // linkKey comes from AuthContext (set when a family link is created)
-        await addDoc(collection(db, 'emergencyContacts'), { ...contact, childId: linkKey, createdAt: new Date().toISOString() });
+        if (linkKey) await saveEmergencyContacts(linkKey, [contact]);
       } catch { /* silent */ }
     }
     setNewContact({ name: '', role: '', phone: '' });

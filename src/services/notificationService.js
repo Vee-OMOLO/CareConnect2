@@ -1,17 +1,12 @@
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { sendNotification } from './supabaseService';
 
 // Send a notification to the parent about a new activity
 export async function notifyParent(linkKey, activityType, details) {
   try {
-    await addDoc(collection(db, 'notifications'), {
-      childId: linkKey,
+    await sendNotification(linkKey, {
       type: 'activity',
       title: getNotificationTitle(activityType),
       body: getNotificationBody(activityType, details),
-      read: false,
-      timestamp: serverTimestamp(),
-      createdAt: new Date().toISOString(),
     });
   } catch {
     // Save to local storage for offline
@@ -30,15 +25,11 @@ export async function notifyParent(linkKey, activityType, details) {
 // Send emergency notification
 export async function notifyEmergency(linkKey, location) {
   try {
-    await addDoc(collection(db, 'notifications'), {
-      childId: linkKey,
+    await sendNotification(linkKey, {
       type: 'sos',
       title: '🚨 EMERGENCY',
       body: `Emergency alert triggered at ${location?.lat?.toFixed(4) || 'unknown'}, ${location?.lng?.toFixed(4) || 'unknown'}`,
-      read: false,
       priority: 'high',
-      timestamp: serverTimestamp(),
-      createdAt: new Date().toISOString(),
     });
   } catch {
     // Silently fail — emergency alert is best-effort

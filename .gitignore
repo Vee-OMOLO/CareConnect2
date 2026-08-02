@@ -7,3 +7,7 @@ build/
 .vercel/
 android/
 *.log
+
+# Migration secrets & artifacts — never commit
+scripts/service-account.json
+supabase/migration/

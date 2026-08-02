@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageHeader from '../components/PageHeader';
 import { activityColors } from '../constants/activityData';
-import { subscribeToEvents } from '../services/firestoreService';
+import { subscribeToEvents } from '../services/supabaseService';
 import { useAuth } from '../contexts/AuthContext';
 
 const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];

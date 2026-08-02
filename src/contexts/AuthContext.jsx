@@ -1,13 +1,19 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { auth, db } from '../firebase';
+import { auth } from '../firebase';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { buildLinkKey } from '../services/firestoreService';
+import { initSupabase } from '../supabase';
+import {
+  buildLinkKey,
+  getUserProfile,
+  saveUserProfile,
+  ensureFamily,
+  removeFamilyMembership
+} from '../services/supabaseService';
 
 const AuthContext = createContext();
 
@@ -65,30 +71,46 @@ export function AuthProvider({ children }) {
 
   async function updateProfile(data) {
     if (!currentUser) return;
-    const ref = doc(db, 'users', currentUser.uid);
-    await setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+    await saveUserProfile(currentUser.uid, { ...data, email: currentUser.email });
     setUserProfile(prev => ({ ...prev, ...data }));
+
+    // Keep families + membership in sync when the link details change.
+    if (data.childName !== undefined || data.parentEmail !== undefined) {
+      const child = data.childName !== undefined ? data.childName : childName;
+      const pEmail = data.parentEmail !== undefined ? data.parentEmail : (userRole === 'caregiver' ? parentEmail : currentUser.email);
+      if (child && pEmail) {
+        const lk = buildLinkKey(pEmail, child);
+        await ensureFamily(lk, {
+          userUid: currentUser.uid,
+          role: data.role || userRole,
+          childName: child,
+          parentEmail: pEmail,
+        });
+      } else if (childName && parentEmail) {
+        // Link removed — drop membership from the old family.
+        const oldLk = buildLinkKey(parentEmail, childName);
+        await removeFamilyMembership(oldLk, currentUser.uid);
+      }
+    }
   }
 
   async function loadProfile(user) {
     if (!user) return;
     try {
-      const ref = doc(db, 'users', user.uid);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data();
+      const data = await getUserProfile(user.uid);
+      if (data) {
         setUserProfile(data);
         if (data.role) {
           setUserRole(data.role);
           localStorage.setItem('careconnect-role', data.role);
         }
-        if (data.childName) {
-          setChildName(data.childName);
-          localStorage.setItem('careconnect-child', data.childName);
+        if (data.child_name) {
+          setChildName(data.child_name);
+          localStorage.setItem('careconnect-child', data.child_name);
         }
-        if (data.parentEmail) {
-          setParentEmailState(data.parentEmail);
-          localStorage.setItem('careconnect-parent-email', data.parentEmail);
+        if (data.parent_email) {
+          setParentEmailState(data.parent_email);
+          localStorage.setItem('careconnect-parent-email', data.parent_email);
         }
       }
     } catch (e) {
@@ -105,6 +127,9 @@ export function AuthProvider({ children }) {
     if (savedParentEmail) setParentEmailState(savedParentEmail);
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // (Re)create the Supabase client for this Firebase user so every
+      // request carries their UID for RLS.
+      initSupabase(user?.uid || null);
       setCurrentUser(user);
       if (user) {
         await loadProfile(user);
