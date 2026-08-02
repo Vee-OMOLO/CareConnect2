@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
+import { getAppVersion } from '../utils/updateManager';
 
 export default function Profile() {
   const { currentUser, userRole, logout } = useAuth();
@@ -140,6 +141,11 @@ export default function Profile() {
           </>
         )}
       </button>
+
+      {/* App version */}
+      <div className="text-center py-2 animate-fade-in-up" style={{ animationDelay: '0.15s' }}>
+        <p className="text-[11px] text-outline">CareConnect v{getAppVersion()}</p>
+      </div>
 
       {/* Edit Profile Modal */}
       {showEditProfile && (
