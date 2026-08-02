@@ -8,10 +8,8 @@ export async function demoLogActivity(linkKey, activityData) {
   // Always save to localStorage first - instant, reliable, no dependencies
   const localResult = saveLocalActivity(linkKey, activityData);
   
-  // Try Supabase in background (non-blocking, fire-and-forget)
-  // We don't await this - just fire it off
+  // Also try to save to Supabase in background (fire-and-forget)
   try {
-    // Use a non-blocking approach - don't await
     const { logActivity } = await import('./supabaseService');
     logActivity(linkKey, activityData).catch(() => {
       // Silently ignore Supabase errors - localStorage already saved
@@ -24,48 +22,41 @@ export async function demoLogActivity(linkKey, activityData) {
   return localResult;
 }
 
-// Get all activities for a linkKey - purely from localStorage (instant, reliable)
+// Get all activities for a linkKey - always returns localStorage data + any Supabase data
 export async function getAllActivities(linkKey) {
+  // ALWAYS get from localStorage first - this is the primary source
+  let activities = [];
   try {
-    // Get from localStorage only - instant, no network calls, no errors
-    const activities = getLocalActivities(linkKey);
-    
-    // Also try to fetch from Supabase in background (non-blocking)
-    try {
-      const { supabase } = await import('../supabase');
-      const { data } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .eq('link_key', linkKey)
-        .order('created_at', { ascending: false });
-      
-      if (data && data.length > 0) {
-        // Merge Supabase data with local data (local takes precedence for recent)
-        const localActivities = getLocalActivities(linkKey);
-        const combined = [...localActivities, ...data];
-        
-        // Deduplicate by ID (local entries have local- prefix)
-        const seen = new Set();
-        const unique = combined.filter(activity => {
-          if (seen.has(activity.id)) return false;
-          seen.add(activity.id);
-          return true;
-        });
-        
-        // Sort by created_at descending
-        return unique.sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-      }
-    } catch {
-      // Silently ignore Supabase errors
-    }
-    
-    return activities;
+    activities = getLocalActivities(linkKey);
   } catch {
-    // Ultimate fallback - empty array
-    return [];
+    activities = [];
   }
+  
+  // Try to get additional data from Supabase (background enhancement)
+  try {
+    const { supabase } = await import('../supabase');
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .eq('link_key', linkKey)
+      .order('created_at', { ascending: false });
+    
+    if (!error && data && data.length > 0) {
+      // Merge Supabase data with local data
+      const localIds = new Set(activities.map(a => a.id));
+      const supabaseOnly = data.filter(item => !localIds.has(item.id));
+      activities = [...supabaseOnly, ...activities]; // Supabase data first, then local
+      
+      // Sort by created_at descending
+      activities = activities.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    }
+  } catch {
+    // Silently ignore Supabase errors - localStorage data is still returned
+  }
+  
+  return activities;
 }
 
 // Sync function - tries to push local activities to Supabase
