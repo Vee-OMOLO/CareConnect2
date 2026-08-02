@@ -59,21 +59,34 @@ export default function CaregiverHome() {
   </button>
   </div>
 
-  {/* Family Link Card */}
-  {parentEmail && childName && (
-  <div className="card p-4 animate-fade-in-up" style={{ animationDelay: '0.02s' }}>
-  <div className="flex items-center gap-3">
-  <div className="w-10 h-10 rounded-[10px] bg-primary/10 flex items-center justify-center flex-shrink-0">
-  <span className="material-symbols-outlined text-primary text-[20px]">family_restroom</span>
-  </div>
-  <div className="min-w-0 flex-1">
-  <p className="text-xs text-on-surface-variant">Connected Family</p>
-  <p className="text-sm font-semibold text-on-surface truncate">{childName} <span className="font-normal text-on-surface-variant">· {parentEmail}</span></p>
-  </div>
-  <span className="material-symbols-outlined text-[16px] text-health">check_circle</span>
-  </div>
-  </div>
-  )}
+      {/* Family Link Card */}
+      <div className="card p-4 animate-fade-in-up" style={{ animationDelay: '0.02s' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[10px] bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <span className="material-symbols-outlined text-primary text-[20px]">family_restroom</span>
+          </div>
+          <div className="min-w-0 flex-1">
+            {parentEmail && childName ? (
+              <>
+                <p className="text-xs text-on-surface-variant">Connected Family</p>
+                <p className="text-sm font-semibold text-on-surface truncate">{childName} <span className="font-normal text-on-surface-variant">· {parentEmail}</span></p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs text-on-surface-variant">Family Link</p>
+                <p className="text-sm font-semibold text-on-surface truncate">Not connected yet</p>
+              </>
+            )}
+          </div>
+          <button
+            onClick={() => navigate('/caregiver/link')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold card-interactive flex-shrink-0"
+          >
+            <span className="material-symbols-outlined text-[16px]">{parentEmail && childName ? 'edit' : 'link'}</span>
+            {parentEmail && childName ? 'Manage' : 'Link Now'}
+          </button>
+        </div>
+      </div>
 
       {/* Quick Log */}
       <div className="animate-fade-in-up" style={{ animationDelay: '0.03s' }}>

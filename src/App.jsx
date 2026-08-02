@@ -9,6 +9,7 @@ import Register from './pages/Register';
 import RoleSelection from './pages/RoleSelection';
 import ParentHome from './pages/ParentHome';
 import CaregiverHome from './pages/CaregiverHome';
+import LinkFamily from './pages/LinkFamily';
 import LogActivity from './pages/LogActivity';
 import Calendar from './pages/Calendar';
 import TrackingMap from './pages/TrackingMap';
@@ -82,6 +83,9 @@ export default function App() {
               } />
               <Route path="/caregiver/log" element={
                 <Page><RoleGate><LogActivity /></RoleGate></Page>
+              } />
+              <Route path="/caregiver/link" element={
+                <Page><RoleGate><LinkFamily /></RoleGate></Page>
               } />
               <Route path="/parent/calendar" element={
                 <Page><RoleGate><Calendar /></RoleGate></Page>
