@@ -8,18 +8,15 @@ export async function demoLogActivity(linkKey, activityData) {
   // Always save to localStorage first - instant, reliable, no dependencies
   const localResult = saveLocalActivity(linkKey, activityData);
   
-  // Also try to save to Supabase in background (fire-and-forget)
+  // Sync to Supabase (await the result so parent sees it immediately)
   try {
     const { logActivity } = await import('./supabaseService');
-    logActivity(linkKey, activityData).catch(() => {
-      // Silently ignore Supabase errors - localStorage already saved
-    });
+    const supabaseResult = await logActivity(linkKey, activityData);
+    return supabaseResult || localResult; // Prefer Supabase if it worked
   } catch {
-    // Silently ignore import errors - localStorage already saved
+    // Silently ignore import/sync errors - localStorage already saved
+    return localResult;
   }
-  
-  // Return local storage result as primary (always works)
-  return localResult;
 }
 
 // Get all activities for a linkKey - always returns localStorage data + any Supabase data
