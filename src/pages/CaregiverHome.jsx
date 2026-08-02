@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getAllActivities, syncLocalActivities } from '../services/demoLogger';
+import { getAllActivities } from '../services/demoLogger';
 import EmergencyDashboard from '../components/EmergencyDashboard';
 import { activityColors, activityTypes } from '../constants/activityData';
 import { SkeletonTimeline } from '../components/Skeleton';
@@ -20,15 +20,16 @@ export default function CaregiverHome() {
     setActivities([]);
     setLoading(true);
     setError(false);
-    const unsub = subscribeToActivities(linkKey, (data) => {
+    
+    // Load activities using demo logger (localStorage + Supabase fallback)
+    getAllActivities(linkKey).then((data) => {
       setActivities(data);
       setLoading(false);
       setError(false);
-    }, () => {
+    }).catch(() => {
       setLoading(false);
       setError(true);
     });
-    return unsub;
   }, [linkKey]);
 
   const h = new Date().getHours();
