@@ -124,11 +124,12 @@ export default function ParentHome() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center card-interactive">
-            <span className="material-symbols-outlined text-primary text-[20px]">person</span>
-          </button>
-        </div>
+        <button
+    onClick={() => navigate('/profile')}
+    className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center card-interactive"
+  >
+    <span className="material-symbols-outlined text-primary text-[20px]">settings</span>
+  </button>
       </div>
 
       {/* Today Status */}
