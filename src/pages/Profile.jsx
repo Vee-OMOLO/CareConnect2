@@ -17,7 +17,7 @@ export default function Profile() {
     { icon: 'lock', label: 'Privacy & Security', subtitle: 'Password, 2FA' },
     { icon: 'language', label: 'Language', subtitle: 'English' },
     { icon: 'help', label: 'Help & Support', subtitle: 'FAQ, contact' },
-    { icon: 'info', label: 'About', subtitle: 'v1.0.0' },
+    { icon: 'info', label: 'About', subtitle: `v${getAppVersion()}` },
   ];
 
   const careTeam = [
