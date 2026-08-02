@@ -1,20 +1,21 @@
 // Demo mode logger - ensures logs always save regardless of backend status
-// Pure localStorage implementation - no external dependencies, no dynamic imports
+// Uses STATIC imports for reliability (no dynamic import issues)
 
 import { saveLocalActivity, getLocalActivities } from './logActivityLocal';
+import { logActivity } from './supabaseService';
+import { supabase } from '../supabase';
 
 // Simple demo mode logger that ALWAYS works
 export async function demoLogActivity(linkKey, activityData) {
   // Always save to localStorage first - instant, reliable, no dependencies
   const localResult = saveLocalActivity(linkKey, activityData);
   
-  // Sync to Supabase (await the result so parent sees it immediately)
+  // Sync to Supabase - AWAIT the result so parent sees it immediately
   try {
-    const { logActivity } = await import('./supabaseService');
     const supabaseResult = await logActivity(linkKey, activityData);
     return supabaseResult || localResult; // Prefer Supabase if it worked
   } catch {
-    // Silently ignore import/sync errors - localStorage already saved
+    // Silently ignore Supabase errors - localStorage already saved
     return localResult;
   }
 }
@@ -29,9 +30,8 @@ export async function getAllActivities(linkKey) {
     activities = [];
   }
   
-  // Try to get additional data from Supabase (background enhancement)
+  // Try to get data from Supabase (shared between devices)
   try {
-    const { supabase } = await import('../supabase');
     const { data, error } = await supabase
       .from('activity_logs')
       .select('*')
@@ -53,13 +53,13 @@ export async function getAllActivities(linkKey) {
     // Silently ignore Supabase errors - localStorage data is still returned
   }
   
+
   return activities;
 }
 
 // Sync function - tries to push local activities to Supabase
 export async function syncLocalActivities(linkKey) {
   try {
-    const { logActivity } = await import('./supabaseService');
     const activities = getLocalActivities(linkKey);
     const localActivities = activities.filter(
       activity => activity._local && !activity._synced
