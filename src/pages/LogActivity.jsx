@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { logActivity } from '../services/supabaseService';
+import { demoLogActivity } from '../services/demoLogger';
 import { notifyParent } from '../services/notificationService';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
@@ -64,7 +64,7 @@ export default function LogActivity() {
     setSaving(true);
     setError('');
     try {
-      const result = await logActivity(linkKey, {
+      const result = await demoLogActivity(linkKey, {
         activityType: selectedType,
         details: {
           option: selectedOption,

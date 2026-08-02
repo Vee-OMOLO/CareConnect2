@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { subscribeToActivities } from '../services/supabaseService';
+import { getAllActivities, syncLocalActivities } from '../services/demoLogger';
 import EmergencyDashboard from '../components/EmergencyDashboard';
 import { activityColors, activityTypes } from '../constants/activityData';
 import { SkeletonTimeline } from '../components/Skeleton';
