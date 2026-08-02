@@ -141,19 +141,19 @@ export default function CaregiverHome() {
             <div className="divide-y divide-outline-variant/15">
               {displayLogs.map((log) => (
                 <div key={log.id} className="flex items-center gap-3 px-4 py-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: activityColors[log.activityType]?.bg || '#edeeef' }}>
-                    <span className="material-symbols-outlined text-[16px]" style={{ color: activityColors[log.activityType]?.text || '#44474c' }}>
-                      {activityTypes.find(a => a.type === log.activityType)?.icon || 'circle'}
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: activityColors[log.activity_type]?.bg || '#edeeef' }}>
+                    <span className="material-symbols-outlined text-[16px]" style={{ color: activityColors[log.activity_type]?.text || '#44474c' }}>
+                      {activityTypes.find(a => a.type === log.activity_type)?.icon || 'circle'}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-on-surface break-words">
-                      {log.details?.option || log.activityType}
+                      {log.details?.option || log.activity_type}
                       {log.details?.quantity ? ` — ${log.details.quantity}` : ''}
                     </p>
                   </div>
                   <span className="text-xs text-outline flex-shrink-0">
-                    {log.timestamp ? new Date(log.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                    {log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                   </span>
                 </div>
               ))}

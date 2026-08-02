@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { subscribeToActivities } from '../services/supabaseService';
+import { getAllActivities } from '../services/demoLogger';
 import { activityColors, activityIcons } from '../constants/activityData';
 import { SkeletonTimeline } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -23,15 +23,14 @@ export default function ParentHome() {
     setActivities([]);
     setLoading(true);
     setError(false);
-    const unsub = subscribeToActivities(linkKey, (data) => {
+    getAllActivities(linkKey).then((data) => {
       setActivities(data);
       setLoading(false);
       setError(false);
-    }, () => {
+    }).catch(() => {
       setLoading(false);
       setError(true);
     });
-    return unsub;
   }, [linkKey]);
 
   const h = new Date().getHours();
@@ -39,20 +38,20 @@ export default function ParentHome() {
 
   const today = new Date().toDateString();
   const todayActivities = activities.filter(a => {
-    if (!a.timestamp) return false;
-    const d = a.timestamp.seconds ? new Date(a.timestamp.seconds * 1000) : new Date(a.createdAt);
+    if (!a.created_at) return false;
+    const d = a.created_at ? new Date(a.created_at) : new Date();
     return d.toDateString() === today;
   });
 
   const todayByType = {
-    feeding: todayActivities.filter(a => a.activityType === 'feeding'),
-    sleep: todayActivities.filter(a => a.activityType === 'sleep'),
-    diaper: todayActivities.filter(a => a.activityType === 'diaper'),
+    feeding: todayActivities.filter(a => a.activity_type === 'feeding'),
+    sleep: todayActivities.filter(a => a.activity_type === 'sleep'),
+    diaper: todayActivities.filter(a => a.activity_type === 'diaper'),
   };
 
   function timeAgo(date) {
     if (!date) return '';
-    const d = date.seconds ? new Date(date.seconds * 1000) : new Date(date);
+    const d = new Date(date);
     const mins = Math.floor((Date.now() - d.getTime()) / 60000);
     if (mins < 60) return `${mins}m ago`;
     const hrs = Math.floor(mins / 60);
@@ -148,7 +147,7 @@ export default function ParentHome() {
               <p className="text-lg font-bold text-on-surface mt-1">{m.data.length}</p>
               <p className="text-[10px] text-on-surface-variant">{m.label}</p>
               {m.data.length > 0 && (
-                <p className="text-[10px] font-medium mt-0.5" style={{ color: activityColors[m.type]?.text }}>{timeAgo(m.data[0].timestamp)}</p>
+                <p className="text-[10px] font-medium mt-0.5" style={{ color: activityColors[m.type]?.text }}>{timeAgo(m.data[0].created_at)}</p>
               )}
             </div>
           ))}
@@ -211,19 +210,19 @@ export default function ParentHome() {
             <div className="divide-y divide-outline-variant/15">
               {displayActivities.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 px-4 py-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: activityColors[item.activityType]?.bg || '#edeeef' }}>
-                    <span className="material-symbols-outlined text-[16px]" style={{ color: activityColors[item.activityType]?.text || '#44474c' }}>
-                      {activityIcons[item.activityType] || 'circle'}
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: activityColors[item.activity_type]?.bg || '#edeeef' }}>
+                    <span className="material-symbols-outlined text-[16px]" style={{ color: activityColors[item.activity_type]?.text || '#44474c' }}>
+                      {activityIcons[item.activity_type] || 'circle'}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-on-surface break-words">
-                      {item.activityType} — {item.details?.option || 'logged'}
+                      {item.activity_type} — {item.details?.option || 'logged'}
                       {item.details?.quantity ? ` (${item.details.quantity})` : ''}
                     </p>
                   </div>
                   <span className="text-xs text-outline flex-shrink-0">
-                    {item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                    {item.created_at ? new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                   </span>
                 </div>
               ))}
