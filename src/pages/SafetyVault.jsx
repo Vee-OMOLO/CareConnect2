@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import EmergencyDashboard from '../components/EmergencyDashboard';
-import { activityColors } from '../constants/activityData';
 import { saveEmergencyContacts } from '../services/supabaseService';
 
 const defaultContacts = [
@@ -18,6 +17,31 @@ const medicalInfo = [
   { label: 'Conditions', value: 'Hypertension, Type 2 Diabetes', icon: 'medical_information' },
   { label: 'Medications', value: 'Lisinopril 10mg, Metformin 500mg', icon: 'medication' },
 ];
+
+function ContactModal({ contact, onClose, onSave }) {
+  const [name, setName] = useState(contact?.name || '');
+  const [role, setRole] = useState(contact?.role || '');
+  const [phone, setPhone] = useState(contact?.phone || '');
+  const isEdit = !!contact;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-label={isEdit ? "Edit Contact" : "Add Contact"}>
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md p-6 animate-slide-up shadow-lg">
+        <div className="w-10 h-1 bg-outline-variant/40 rounded-full mx-auto mb-4" />
+        <h2 className="text-lg font-bold text-on-surface mb-4">{isEdit ? 'Edit Contact' : 'Add Contact'}</h2>
+        <div className="flex flex-col gap-3">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contact name" className="glass-input" />
+          <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Relationship" className="glass-input" />
+          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" className="glass-input" />
+          <button onClick={() => { if (!name || !phone) return; onSave({ name, role, phone, isPrimary: contact?.isPrimary || false }); }} disabled={!name || !phone} className="w-full bg-primary text-on-primary py-3 rounded-xl font-semibold text-base disabled:opacity-40">
+            {isEdit ? 'Save Changes' : 'Save Contact'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AddContactModal({ newContact, setNewContact, onSave, onClose }) {
   const firstInputRef = useRef(null);
@@ -52,6 +76,8 @@ export default function SafetyVault() {
   const { linkKey, currentUser } = useAuth();
   const toast = useToast();
   const [showAddContact, setShowAddContact] = useState(false);
+  const [showEditContact, setShowEditContact] = useState(false);
+  const [editingContact, setEditingContact] = useState(null);
   const [showEmergency, setShowEmergency] = useState(false);
   const [contacts, setContacts] = useState(defaultContacts);
   const [newContact, setNewContact] = useState({ name: '', role: '', phone: '' });
@@ -100,6 +126,21 @@ function loadContactsOffline() {
     toast.info('Contact removed');
   }
 
+  function editContact(index) {
+    setEditingContact({ ...contacts[index], index });
+    setShowEditContact(true);
+  }
+
+  function saveEditedContact(updatedContact) {
+    const updated = [...contacts];
+    updated[editingContact.index] = { ...updated[editingContact.index], ...updatedContact };
+    setContacts(updated);
+    saveContactsOffline(updated);
+    setShowEditContact(false);
+    setEditingContact(null);
+    toast.success('Contact updated');
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
@@ -145,6 +186,9 @@ function loadContactsOffline() {
                   <p className="text-xs text-outline mt-0.5">{contact.role}</p>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => editContact(i)} className="w-8 h-8 bg-surface-container-low rounded-lg flex items-center justify-center card-interactive">
+                    <span className="material-symbols-outlined text-outline text-[16px]">edit</span>
+                  </button>
                   <a href={`tel:${contact.phone}`} className="w-8 h-8 bg-health-bg rounded-lg flex items-center justify-center card-interactive">
                     <span className="material-symbols-outlined text-health text-[16px]">call</span>
                   </a>
@@ -180,27 +224,7 @@ function loadContactsOffline() {
         </div>
       </div>
 
-      {/* Documents */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '0.09s' }}>
-        <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Documents</h2>
-        <div className="flex flex-col gap-2">
-          {[
-            { name: 'Insurance Card', icon: 'credit_card', type: 'primary' },
-            { name: 'Advance Directive', icon: 'description', type: 'play' },
-            { name: 'Recent Lab Results', icon: 'lab', type: 'medicine' },
-          ].map((doc, i) => (
-            <div key={i} className="card px-4 py-3" style={{ borderLeft: `3px solid ${activityColors[doc.type]?.text || '#74777d'}` }}>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: activityColors[doc.type]?.bg || '#edeeef' }}>
-                  <span className="material-symbols-outlined text-[18px]" style={{ color: activityColors[doc.type]?.text || '#44474c' }}>{doc.icon}</span>
-                </div>
-                <span className="text-sm font-semibold text-on-surface flex-1">{doc.name}</span>
-                <span className="material-symbols-outlined text-outline text-[18px] flex-shrink-0">chevron_right</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      
 
       {/* Offline is now shown via global OfflineBanner */}
 
@@ -211,6 +235,15 @@ function loadContactsOffline() {
           setNewContact={setNewContact}
           onSave={addContact}
           onClose={() => setShowAddContact(false)}
+        />
+      )}
+
+      {/* Edit Contact Modal */}
+      {showEditContact && editingContact && (
+        <ContactModal
+          contact={editingContact}
+          onClose={() => { setShowEditContact(false); setEditingContact(null); }}
+          onSave={saveEditedContact}
         />
       )}
 

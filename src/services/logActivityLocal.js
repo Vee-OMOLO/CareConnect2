@@ -70,3 +70,42 @@ export function cleanupOldLocalActivities(maxAgeDays = 30) {
     console.error('Error cleaning up local activities:', error);
   }
 }
+
+// --- Events (Calendar) ---
+
+export function saveLocalEvent(linkKey, eventData) {
+  try {
+    const existing = JSON.parse(localStorage.getItem('careconnect-events') || '[]');
+    
+    const newEvent = {
+      id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      link_key: linkKey,
+      child_id: linkKey,
+      title: eventData.title || null,
+      type: eventData.type || null,
+      date: eventData.date || null,
+      notes: eventData.notes || null,
+      caregiver_id: eventData.caregiverId || null,
+      created_at: new Date().toISOString(),
+      _local: true,
+      _synced: false
+    };
+    
+    const updated = [newEvent, ...existing];
+    localStorage.setItem('careconnect-events', JSON.stringify(updated));
+    return newEvent.id;
+  } catch (error) {
+    console.error('Error saving event to local storage:', error);
+    return null;
+  }
+}
+
+export function getLocalEvents(linkKey) {
+  try {
+    const events = JSON.parse(localStorage.getItem('careconnect-events') || '[]');
+    return events.filter(event => event.link_key === linkKey);
+  } catch (error) {
+    console.error('Error loading local events:', error);
+    return [];
+  }
+}

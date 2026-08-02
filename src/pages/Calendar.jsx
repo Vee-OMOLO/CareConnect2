@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageHeader from '../components/PageHeader';
 import { activityColors } from '../constants/activityData';
-import { subscribeToEvents } from '../services/supabaseService';
+import { getAllEvents, addLocalEvent } from '../services/demoLogger';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
 
 const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -14,16 +15,23 @@ const eventIcons = { medicine: 'medication', health: 'local_hospital', feeding: 
 
 export default function Calendar() {
   const { linkKey } = useAuth();
+  const toast = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [direction, setDirection] = useState(0);
   const [events, setEvents] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [newEvent, setNewEvent] = useState({ title: '', date: '', type: 'health', notes: '' });
 
-  // Stream real events from Supabase when a family is linked.
+  // Load events from Supabase when a family is linked.
   useEffect(() => {
-    if (!linkKey) return undefined;
+    if (!linkKey) {
+      setEvents([]);
+      setUpcoming([]);
+      return;
+    }
 
-    const unsub = subscribeToEvents(linkKey, (data) => {
+    getAllEvents(linkKey).then((data) => {
       setEvents(data.map(ev => {
         const d = ev.date ? new Date(ev.date) : null;
         return {
@@ -39,11 +47,10 @@ export default function Calendar() {
         type: ev.type || 'health',
         icon: eventIcons[ev.type] || 'event',
       })));
-    }, () => {
-      // keep empty state on error
+    }).catch(() => {
+      setEvents([]);
+      setUpcoming([]);
     });
-
-    return unsub;
   }, [linkKey]);
 
   const year = currentDate.getFullYear();
