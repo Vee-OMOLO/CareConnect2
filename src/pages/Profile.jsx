@@ -183,27 +183,6 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Settings */}
-      <div className="animate-fade-in-up" style={{ animationDelay: '0.09s' }}>
-        <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Settings</h2>
-        <div className="card overflow-hidden">
-          <div className="divide-y divide-outline-variant/15">
-            {settingsItems.map((item, i) => (
-              <button key={i} className="w-full px-4 py-3 flex items-center gap-3 card-interactive hover:bg-surface-container-low transition-colors text-left">
-                <div className="w-8 h-8 bg-surface-container-low rounded-lg flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-outlined text-on-surface-variant text-[18px]">{item.icon}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-on-surface">{item.label}</p>
-                  <p className="text-xs text-outline">{item.subtitle}</p>
-                </div>
-                <span className="material-symbols-outlined text-outline text-[18px] flex-shrink-0">chevron_right</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* Logout */}
       <button
         onClick={handleLogout}
