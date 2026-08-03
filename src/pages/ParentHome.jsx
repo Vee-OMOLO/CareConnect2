@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllActivities, getEmergencyAlerts } from '../services/demoLogger';
+import { ensureFamily } from '../services/supabaseService';
 import { activityColors, activityIcons, activityTypes } from '../constants/activityData';
 import { SkeletonTimeline } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -9,7 +10,7 @@ import EmergencyDashboard from '../components/EmergencyDashboard';
 
 export default function ParentHome() {
   const navigate = useNavigate();
-  const { currentUser, linkKey, childName, setChild, updateProfile } = useAuth();
+  const { currentUser, linkKey, childName, parentEmail, setChild, updateProfile } = useAuth();
   const [activities, setActivities] = useState([]);
   const [emergencyAlerts, setEmergencyAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +19,19 @@ export default function ParentHome() {
   const [showEmergency, setShowEmergency] = useState(false);
   const [childNameInput, setChildNameInput] = useState(childName || '');
   const childInputRef = useRef(null);
+
+  // Ensure parent is in family_members so RLS allows reading activity_logs.
+  // The caregiver adds themselves when linking, but the parent must also be
+  // a member for SELECT/INSERT policies to pass.
+  useEffect(() => {
+    if (!linkKey || !currentUser?.uid) return;
+    ensureFamily(linkKey, {
+      userUid: currentUser.uid,
+      role: 'parent',
+      childName,
+      parentEmail: parentEmail || currentUser.email,
+    }).catch(() => {});
+  }, [linkKey, currentUser?.uid]);
 
   useEffect(() => {
     if (!linkKey) { setActivities([]); setLoading(false); return; }
