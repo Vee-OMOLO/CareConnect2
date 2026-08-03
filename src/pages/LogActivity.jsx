@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { demoLogActivity } from '../services/demoLogger';
 import { notifyParent } from '../services/notificationService';
+import { uploadImage, validateImage } from '../services/cloudinaryService';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import ActivityChip from '../components/ActivityChip';
@@ -22,9 +23,49 @@ export default function LogActivity() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [photo, setPhoto] = useState(null); // { file, preview, url, uploading, progress }
+  const fileInputRef = useRef(null);
+
+  // Cleanup photo preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (photo?.preview) URL.revokeObjectURL(photo.preview);
+    };
+  }, []);
 
   const currentType = activityTypes.find(a => a.type === selectedType);
   const showQuantity = selectedType === 'feeding' || selectedType === 'medicine';
+
+  async function handlePhotoSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validation = validateImage(file);
+    if (!validation.valid) {
+      toast.error(validation.error);
+      return;
+    }
+
+    const preview = URL.createObjectURL(file);
+    setPhoto({ file, preview, url: null, uploading: true, progress: 0 });
+
+    try {
+      const result = await uploadImage(file, (progress) => {
+        setPhoto(prev => prev ? { ...prev, progress } : null);
+      });
+      setPhoto(prev => prev ? { ...prev, url: result.url, uploading: false } : null);
+    } catch (err) {
+      console.error('Photo upload failed:', err);
+      toast.error('Failed to upload photo. Please try again.');
+      setPhoto(null);
+    }
+  }
+
+  function handleRemovePhoto() {
+    if (photo?.preview) URL.revokeObjectURL(photo.preview);
+    setPhoto(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
 
   // No linked family yet — prompt instead of writing to a null path
   if (!linkKey) {
@@ -70,6 +111,7 @@ export default function LogActivity() {
           option: selectedOption,
           quantity: showQuantity ? quantity : undefined,
           notes: notes || undefined,
+          photoUrl: photo?.url || undefined,
         },
         caregiverId: currentUser.uid,
         caregiverEmail: currentUser.email,
@@ -175,14 +217,59 @@ export default function LogActivity() {
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add any notes..." rows={3} className="glass-input resize-none" />
       </div>
 
+      {/* Photo Upload */}
+      <div className="animate-fade-in-up" style={{ animationDelay: '0.12s' }}>
+        <h2 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Photo <span className="font-normal text-outline">(optional)</span></h2>
+        {photo ? (
+          <div className="relative card p-2">
+            <img src={photo.preview} alt="Selected" className="w-full h-40 object-cover rounded-xl" />
+            {photo.uploading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-xl">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="text-white text-xs font-medium">{photo.progress}%</span>
+                </div>
+              </div>
+            )}
+            {photo.url && (
+              <div className="absolute top-3 right-3">
+                <span className="material-symbols-outlined text-[20px] text-green-400 bg-black/50 rounded-full p-1">check_circle</span>
+              </div>
+            )}
+            <button
+              onClick={handleRemovePhoto}
+              className="absolute top-3 left-3 w-7 h-7 flex items-center justify-center rounded-full bg-black/50 text-white"
+            >
+              <span className="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full card p-4 flex flex-col items-center gap-2 text-on-surface-variant hover:bg-surface-container transition-colors"
+          >
+            <span className="material-symbols-outlined text-[28px]">add_a_photo</span>
+            <span className="text-sm font-medium">Tap to add a photo</span>
+            <span className="text-xs text-outline">JPEG, PNG, WebP up to 5 MB</span>
+          </button>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic"
+          onChange={handlePhotoSelect}
+          className="hidden"
+        />
+      </div>
+
       {/* Save */}
       <button
         onClick={handleSave}
-        disabled={!selectedOption || saving}
+        disabled={!selectedOption || saving || photo?.uploading}
         className="w-full py-3 rounded-xl font-semibold text-on-primary transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
         style={{ backgroundColor: selectedType ? `var(--color-${selectedType})` : '#041627' }}
       >
-        {saving ? 'Saving...' : 'Save Log'}
+        {saving ? 'Saving...' : photo?.uploading ? 'Uploading photo...' : 'Save Log'}
       </button>
     </div>
   );
