@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
+import { findFamilyByParentEmail } from '../services/supabaseService';
 import PageHeader from '../components/PageHeader';
 
 export default function LinkFamily() {
@@ -12,8 +13,38 @@ export default function LinkFamily() {
   const [parentEmailInput, setParentEmailInput] = useState(parentEmail || '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [detectedFamily, setDetectedFamily] = useState(null);
+  const [detecting, setDetecting] = useState(false);
+  const detectTimeoutRef = useRef(null);
 
   const isLinked = Boolean(parentEmail && childName);
+
+  // Auto-detect parent's family when caregiver enters parent email
+  useEffect(() => {
+    const email = parentEmailInput.trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setDetectedFamily(null);
+      return;
+    }
+    setDetecting(true);
+    // Debounce: wait 500ms after typing stops
+    clearTimeout(detectTimeoutRef.current);
+    detectTimeoutRef.current = setTimeout(async () => {
+      try {
+        const family = await findFamilyByParentEmail(email);
+        setDetectedFamily(family);
+        // Auto-populate child name from parent's family if not already set
+        if (family?.child_name && !childNameInput.trim()) {
+          setChildNameInput(family.child_name);
+        }
+      } catch {
+        setDetectedFamily(null);
+      } finally {
+        setDetecting(false);
+      }
+    }, 500);
+    return () => clearTimeout(detectTimeoutRef.current);
+  }, [parentEmailInput]);
 
   async function handleSave() {
     const name = childNameInput.trim();
@@ -111,6 +142,25 @@ export default function LinkFamily() {
               placeholder="parent@example.com"
               className="glass-input"
             />
+            {detecting && (
+              <p className="text-[11px] text-outline mt-1.5 flex items-center gap-1">
+                <span className="w-3 h-3 border-2 border-outline/30 border-t-primary rounded-full animate-spin" />
+                Searching for parent's account...
+              </p>
+            )}
+            {detectedFamily && !detecting && (
+              <div className="mt-2 p-2.5 rounded-xl bg-health-bg border border-health/20">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-health text-[16px]">check_circle</span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-health">Parent found!</p>
+                    <p className="text-[11px] text-on-surface-variant">
+                      Child on file: <span className="font-semibold text-on-surface">{detectedFamily.child_name}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">Child's Name</label>

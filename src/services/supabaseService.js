@@ -14,6 +14,24 @@ export function buildLinkKey(parentEmail, childName) {
   return `${email}_${name}`;
 }
 
+// Find an existing family by parent email (returns the family row or null)
+export async function findFamilyByParentEmail(parentEmail) {
+  try {
+    const email = (parentEmail || '').trim().toLowerCase();
+    const { data, error } = await supabase
+      .from('families')
+      .select('*')
+      .ilike('parent_email', email)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  } catch (e) {
+    console.error('Error finding family by parent email:', e);
+    return null;
+  }
+}
+
 function mapRow(row) {
   return row ? { ...row, timestamp: row.created_at, createdAt: row.created_at } : row;
 }
@@ -281,17 +299,39 @@ export async function saveUserProfile(uid, data) {
 }
 
 // Create/update the family row and add the user as a member.
+// Deep-link logic: always look up the parent's family by email first.
+// If the parent already has a family, the caregiver joins THAT family
+// (using the parent's child_name) so both users share the same linkKey.
 export async function ensureFamily(linkKey, { userUid, role, childName, parentEmail }) {
   try {
     const sb = supabase;
+    const email = (parentEmail || '').trim().toLowerCase();
+
+    // Step 1: Check if the parent already has a family by email
+    let { data: existing } = await sb
+      .from('families')
+      .select('*')
+      .ilike('parent_email', email)
+      .limit(1)
+      .maybeSingle();
+
+    // Step 2: If parent's family exists, always use its child_name (canonical source)
+    let finalChildName = childName;
+    let finalLinkKey = linkKey;
+    if (existing?.child_name) {
+      finalChildName = existing.child_name;
+      finalLinkKey = buildLinkKey(email, existing.child_name);
+    }
+
+    // Step 3: Upsert the family with the canonical child_name
     const { data: fam, error: famError } = await sb
       .from('families')
       .upsert(
         {
-          link_key: linkKey,
-          child_name: childName || null,
-          parent_email: parentEmail || null,
-          parent_uid: role === 'parent' ? userUid : undefined,
+          link_key: finalLinkKey,
+          child_name: finalChildName || null,
+          parent_email: email || null,
+          parent_uid: role === 'parent' ? userUid : (existing?.parent_uid || undefined),
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'link_key' }
@@ -300,13 +340,15 @@ export async function ensureFamily(linkKey, { userUid, role, childName, parentEm
       .single();
     if (famError) throw famError;
 
+    // Step 4: Add this user as a family member
     const { error: memError } = await sb
       .from('family_members')
       .upsert(
-        { link_key: linkKey, user_uid: userUid, role: role || null },
+        { link_key: fam.link_key, user_uid: userUid, role: role || null },
         { onConflict: 'link_key,user_uid' }
       );
     if (memError) throw memError;
+
     return fam.link_key;
   } catch (e) {
     console.error('Error ensuring family:', e);

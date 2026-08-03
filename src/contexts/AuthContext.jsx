@@ -5,7 +5,8 @@ import {
   getUserProfile,
   saveUserProfile,
   ensureFamily,
-  removeFamilyMembership
+  removeFamilyMembership,
+  findFamilyByParentEmail
 } from '../services/supabaseService';
 
 const AuthContext = createContext();
@@ -76,13 +77,23 @@ export function AuthProvider({ children }) {
       const child = data.childName !== undefined ? data.childName : childName;
       const pEmail = data.parentEmail !== undefined ? data.parentEmail : (userRole === 'caregiver' ? parentEmail : currentUser.email);
       if (child && pEmail) {
-        const lk = buildLinkKey(pEmail, child);
-        await ensureFamily(lk, {
+        await ensureFamily(buildLinkKey(pEmail, child), {
           userUid: currentUser.uid,
           role: data.role || userRole,
           childName: child,
           parentEmail: pEmail,
         });
+        // Resolve the canonical child_name from the parent's family so
+        // both users always derive the same linkKey for queries.
+        try {
+          const family = await findFamilyByParentEmail(pEmail);
+          if (family?.child_name && family.child_name !== child) {
+            setChildName(family.child_name);
+            localStorage.setItem('careconnect-child', family.child_name);
+          }
+        } catch {
+          // non-critical — fall back to local child name
+        }
       } else if (childName && parentEmail) {
         // Link removed — drop membership from the old family.
         const oldLk = buildLinkKey(parentEmail, childName);
@@ -100,13 +111,32 @@ export function AuthProvider({ children }) {
           setUserRole(data.role);
           localStorage.setItem('careconnect-role', data.role);
         }
-        if (data.child_name) {
-          setChildName(data.child_name);
-          localStorage.setItem('careconnect-child', data.child_name);
-        }
         if (data.parent_email) {
           setParentEmailState(data.parent_email);
           localStorage.setItem('careconnect-parent-email', data.parent_email);
+        }
+
+        // Resolve the canonical child_name from the parent's family.
+        // This ensures caregivers always use the same child_name (and
+        // therefore the same linkKey) as the parent, even if their
+        // profiles table has a different child_name value.
+        let resolvedChildName = data.child_name || '';
+        const role = data.role;
+        const pEmail = data.parent_email;
+        if (role === 'caregiver' && pEmail) {
+          try {
+            const family = await findFamilyByParentEmail(pEmail);
+            if (family?.child_name) {
+              resolvedChildName = family.child_name;
+            }
+          } catch {
+            // Fall back to the profile's child_name
+          }
+        }
+
+        if (resolvedChildName) {
+          setChildName(resolvedChildName);
+          localStorage.setItem('careconnect-child', resolvedChildName);
         }
       }
     } catch (e) {
