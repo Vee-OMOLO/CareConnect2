@@ -25,11 +25,12 @@ export default function LogActivity() {
   const [error, setError] = useState('');
   const [photo, setPhoto] = useState(null); // { file, preview, url, uploading, progress }
   const fileInputRef = useRef(null);
+  const previewRef = useRef(null);
 
   // Cleanup photo preview URL on unmount
   useEffect(() => {
     return () => {
-      if (photo?.preview) URL.revokeObjectURL(photo.preview);
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
     };
   }, []);
 
@@ -47,6 +48,7 @@ export default function LogActivity() {
     }
 
     const preview = URL.createObjectURL(file);
+    previewRef.current = preview;
     setPhoto({ file, preview, url: null, uploading: true, progress: 0 });
 
     try {
@@ -62,7 +64,8 @@ export default function LogActivity() {
   }
 
   function handleRemovePhoto() {
-    if (photo?.preview) URL.revokeObjectURL(photo.preview);
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    previewRef.current = null;
     setPhoto(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
