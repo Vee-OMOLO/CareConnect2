@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllActivities, getAllEvents } from '../services/demoLogger';
+import { ensureFamily } from '../services/supabaseService';
 import EmergencyDashboard from '../components/EmergencyDashboard';
 import { activityColors, activityTypes } from '../constants/activityData';
 import { SkeletonTimeline } from '../components/Skeleton';
@@ -16,12 +17,23 @@ export default function CaregiverHome() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  // Ensure caregiver is in family_members so RLS allows reading/writing activity_logs.
+  useEffect(() => {
+    if (!linkKey || !currentUser?.uid) return;
+    ensureFamily(linkKey, {
+      userUid: currentUser.uid,
+      role: 'caregiver',
+      childName,
+      parentEmail: parentEmail || currentUser.email,
+    }).catch(() => {});
+  }, [linkKey, currentUser?.uid]);
+
   useEffect(() => {
     if (!linkKey) { setActivities([]); setEvents([]); setLoading(false); return; }
     setActivities([]);
     setLoading(true);
     setError(false);
-    
+
     // Load activities using demo logger (localStorage + Supabase fallback)
     getAllActivities(linkKey).then((data) => {
       setActivities(data);
@@ -31,7 +43,7 @@ export default function CaregiverHome() {
       setLoading(false);
       setError(true);
     });
-    
+
     // Load calendar events
     getAllEvents(linkKey).then((data) => {
       setEvents(data);

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { demoLogActivity } from '../services/demoLogger';
 import { notifyParent } from '../services/notificationService';
 import { uploadImage, validateImage } from '../services/cloudinaryService';
+import { ensureFamily } from '../services/supabaseService';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import ActivityChip from '../components/ActivityChip';
@@ -11,7 +12,7 @@ import { activityColors, activityTypes } from '../constants/activityData';
 
 export default function LogActivity() {
   const navigate = useNavigate();
-  const { linkKey, currentUser } = useAuth();
+  const { linkKey, currentUser, childName, parentEmail } = useAuth();
   const toast = useToast();
   const [searchParams] = useSearchParams();
   const initialType = searchParams.get('type') || 'feeding';
@@ -26,6 +27,17 @@ export default function LogActivity() {
   const [photo, setPhoto] = useState(null); // { file, preview, url, uploading, progress }
   const fileInputRef = useRef(null);
   const previewRef = useRef(null);
+
+  // Ensure caregiver is in family_members so RLS allows inserting activity_logs.
+  useEffect(() => {
+    if (!linkKey || !currentUser?.uid) return;
+    ensureFamily(linkKey, {
+      userUid: currentUser.uid,
+      role: 'caregiver',
+      childName,
+      parentEmail: parentEmail || currentUser.email,
+    }).catch(() => {});
+  }, [linkKey, currentUser?.uid]);
 
   // Cleanup photo preview URL on unmount
   useEffect(() => {
