@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
 import PageHeader from '../components/PageHeader';
 import EmergencyDashboard from '../components/EmergencyDashboard';
-import { saveEmergencyContacts } from '../services/supabaseService';
+import { getEmergencyContacts, syncEmergencyContacts } from '../services/supabaseService';
 
 const defaultContacts = [
   { name: 'Dr. Sarah Smith', role: 'Primary Care Physician', phone: '(555) 123-4567', isPrimary: true },
@@ -107,34 +107,44 @@ function loadMedicalInfoOffline() {
   useEffect(() => {
     setContacts(loadContactsOffline());
     setMedicalInfo(loadMedicalInfoOffline());
+
+    // Prefer cloud-synced contacts when a family is linked — they survive
+    // device switches and are shared with the caregiver/parent.
+    if (linkKey) {
+      getEmergencyContacts(linkKey).then((cloudContacts) => {
+        if (cloudContacts && cloudContacts.length > 0) {
+          setContacts(cloudContacts);
+          saveContactsOffline(cloudContacts);
+        }
+      });
+    }
+
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => { window.removeEventListener('online', handleOnline); window.removeEventListener('offline', handleOffline); };
-  }, []);
+  }, [linkKey]);
+
+  function persistContacts(updated) {
+    setContacts(updated);
+    saveContactsOffline(updated);
+    if (isOnline && linkKey) {
+      syncEmergencyContacts(linkKey, updated).catch(() => {});
+    }
+  }
 
   async function addContact() {
     if (!newContact.name || !newContact.phone) return;
     const contact = { ...newContact, isPrimary: false, id: Date.now().toString() };
-    const updated = [...contacts, contact];
-    setContacts(updated);
-    saveContactsOffline(updated);
-    if (isOnline) {
-      try {
-        // linkKey comes from AuthContext (set when a family link is created)
-        if (linkKey) await saveEmergencyContacts(linkKey, [contact]);
-      } catch { /* silent */ }
-    }
+    persistContacts([...contacts, contact]);
     setNewContact({ name: '', role: '', phone: '' });
     setShowAddContact(false);
     toast.success('Contact added');
   }
 
   function removeContact(index) {
-    const updated = contacts.filter((_, i) => i !== index);
-    setContacts(updated);
-    saveContactsOffline(updated);
+    persistContacts(contacts.filter((_, i) => i !== index));
     toast.info('Contact removed');
   }
 
@@ -146,8 +156,7 @@ function loadMedicalInfoOffline() {
   function saveEditedContact(updatedContact) {
     const updated = [...contacts];
     updated[editingContact.index] = { ...updated[editingContact.index], ...updatedContact };
-    setContacts(updated);
-    saveContactsOffline(updated);
+    persistContacts(updated);
     setShowEditContact(false);
     setEditingContact(null);
     toast.success('Contact updated');

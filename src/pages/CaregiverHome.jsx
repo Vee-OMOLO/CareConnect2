@@ -30,26 +30,36 @@ export default function CaregiverHome() {
 
   useEffect(() => {
     if (!linkKey) { setActivities([]); setEvents([]); setLoading(false); return; }
+    let cancelled = false;
+
+    const refresh = () => {
+      // Load activities using demo logger (localStorage + Supabase fallback)
+      getAllActivities(linkKey).then((data) => {
+        if (cancelled) return;
+        setActivities(data);
+        setLoading(false);
+        setError(false);
+      }).catch(() => {
+        if (!cancelled) {
+          setLoading(false);
+          setError(true);
+        }
+      });
+
+      // Load calendar events
+      getAllEvents(linkKey).then((data) => {
+        if (!cancelled) setEvents(data);
+      }).catch(() => {
+        if (!cancelled) setEvents([]);
+      });
+    };
+
     setActivities([]);
     setLoading(true);
     setError(false);
-
-    // Load activities using demo logger (localStorage + Supabase fallback)
-    getAllActivities(linkKey).then((data) => {
-      setActivities(data);
-      setLoading(false);
-      setError(false);
-    }).catch(() => {
-      setLoading(false);
-      setError(true);
-    });
-
-    // Load calendar events
-    getAllEvents(linkKey).then((data) => {
-      setEvents(data);
-    }).catch(() => {
-      setEvents([]);
-    });
+    refresh();
+    const interval = setInterval(refresh, 20000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [linkKey]);
 
   const h = new Date().getHours();

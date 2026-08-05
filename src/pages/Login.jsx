@@ -2,13 +2,35 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+function loginErrorMessage(err) {
+  const code = err?.code || err?.status || '';
+  const msg = (err && err.message) || '';
+  if (code === 'email_not_confirmed' || /email not confirmed/i.test(msg)) {
+    return 'Please confirm your email first — check your inbox for the verification link.';
+  }
+  if (code === 'invalid_credentials' || /invalid login credentials/i.test(msg)) {
+    return 'Invalid email or password.';
+  }
+  if (/user not found/i.test(msg) || /no account/i.test(msg)) {
+    return 'No account found with this email. Get started to create one.';
+  }
+  if (/too many requests/i.test(msg)) {
+    return 'Too many attempts. Please wait a moment and try again.';
+  }
+  return 'Unable to sign in. Please try again.';
+}
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const { login, sendPasswordReset, userRole } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -17,11 +39,26 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/role-selection');
-    } catch {
-      setError('Invalid email or password');
+      // Role is loaded from the profile asynchronously; if we already know it,
+      // skip the role-selection screen and go straight to the right dashboard.
+      navigate(userRole ? (userRole === 'parent' ? '/parent' : '/caregiver') : '/role-selection');
+    } catch (err) {
+      setError(loginErrorMessage(err));
     }
     setLoading(false);
+  }
+
+  async function handleForgotSubmit(e) {
+    e.preventDefault();
+    setForgotError('');
+    setForgotLoading(true);
+    try {
+      await sendPasswordReset(email);
+      setForgotSent(true);
+    } catch (err) {
+      setForgotError((err && err.message) || 'Unable to send reset link.');
+    }
+    setForgotLoading(false);
   }
 
   return (
@@ -83,7 +120,9 @@ export default function Login() {
             </div>
 
             <div className="flex justify-end">
-              <button type="button" className="text-xs font-semibold text-primary">Forgot password?</button>
+              <button type="button" onClick={() => { setShowForgot(true); setForgotSent(false); setForgotError(''); }} className="text-xs font-semibold text-primary">
+                Forgot password?
+              </button>
             </div>
 
             <button type="submit" disabled={loading} className="auth-button">
@@ -95,26 +134,6 @@ export default function Login() {
               ) : 'Sign In'}
             </button>
           </form>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-outline-variant/30" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="px-4 text-xs text-outline bg-white">or continue with</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button className="auth-social-button">
-              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-              Google
-            </button>
-            <button className="auth-social-button">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12c0-5.523-4.477-10-10-10z"/></svg>
-              Facebook
-            </button>
-          </div>
         </div>
 
         <p className="text-center text-sm text-on-surface-variant mt-6">
@@ -122,6 +141,58 @@ export default function Login() {
           <Link to="/register" className="text-primary font-semibold">Get started</Link>
         </p>
       </div>
+
+      {showForgot && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-sm rounded-3xl p-6 animate-slide-up">
+            {forgotSent ? (
+              <>
+                <div className="w-12 h-12 bg-health/10 rounded-2xl flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-health text-[24px]">mark_email_read</span>
+                </div>
+                <h3 className="text-lg font-bold text-on-surface">Reset link sent</h3>
+                <p className="text-sm text-on-surface-variant mt-1 mb-5">
+                  If an account exists for <span className="font-semibold text-on-surface">{email}</span>, a password reset link is on its way. Check your inbox (and spam).
+                </p>
+                <button onClick={() => setShowForgot(false)} className="auth-button">Done</button>
+              </>
+            ) : (
+              <form onSubmit={handleForgotSubmit} className="flex flex-col gap-4">
+                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                  <span className="material-symbols-outlined text-primary text-[24px]">lock_reset</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-on-surface">Reset your password</h3>
+                  <p className="text-sm text-on-surface-variant mt-1">Enter your email and we'll send you a reset link.</p>
+                </div>
+
+                {forgotError && (
+                  <div className="flex items-center gap-2 bg-error-container text-on-error-container px-4 py-3 rounded-xl text-sm font-medium animate-shake">
+                    <span className="material-symbols-outlined text-[16px]">error</span>
+                    {forgotError}
+                  </div>
+                )}
+
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@email.com"
+                  className="auth-input"
+                  required
+                />
+
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setShowForgot(false)} className="flex-1 auth-social-button">Cancel</button>
+                  <button type="submit" disabled={forgotLoading} className="flex-1 auth-button">
+                    {forgotLoading ? 'Sending...' : 'Send link'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

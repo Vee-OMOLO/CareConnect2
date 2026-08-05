@@ -23,34 +23,45 @@ export default function Calendar() {
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: '', date: '', type: 'health', notes: '' });
 
-  // Load events from Supabase when a family is linked.
+  // Load events from Supabase when a family is linked (with periodic refresh).
   useEffect(() => {
     if (!linkKey) {
       setEvents([]);
       setUpcoming([]);
       return;
     }
+    let cancelled = false;
 
-    getAllEvents(linkKey).then((data) => {
-      setEvents(data.map(ev => {
-        const d = ev.date ? new Date(ev.date) : null;
-        return {
-          day: d ? d.getDate() : null,
+    const load = () => {
+      getAllEvents(linkKey).then((data) => {
+        if (cancelled) return;
+        const mapped = data.map(ev => {
+          const d = ev.date ? new Date(ev.date) : null;
+          return {
+            day: d ? d.getDate() : null,
+            type: ev.type || 'health',
+            label: ev.title || ev.type || 'Event',
+            date: ev.date,
+          };
+        });
+        setEvents(mapped);
+        setUpcoming(data.map(ev => ({
+          title: ev.title || 'Event',
+          time: ev.date ? new Date(ev.date).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Scheduled',
           type: ev.type || 'health',
-          label: ev.title || ev.type || 'Event',
-          date: ev.date,
-        };
-      }));
-      setUpcoming(data.map(ev => ({
-        title: ev.title || 'Event',
-        time: ev.date ? new Date(ev.date).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Scheduled',
-        type: ev.type || 'health',
-        icon: eventIcons[ev.type] || 'event',
-      })));
-    }).catch(() => {
-      setEvents([]);
-      setUpcoming([]);
-    });
+          icon: eventIcons[ev.type] || 'event',
+        })));
+      }).catch(() => {
+        if (!cancelled) {
+          setEvents([]);
+          setUpcoming([]);
+        }
+      });
+    };
+
+    load();
+    const interval = setInterval(load, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [linkKey]);
 
   const year = currentDate.getFullYear();

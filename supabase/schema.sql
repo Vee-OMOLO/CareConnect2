@@ -182,6 +182,12 @@ drop policy if exists "families update member" on public.families;
 create policy "families update member" on public.families for update
   using (public.is_family_member(link_key))
   with check (auth.uid() is not null);
+-- families: deep-link lookup — any signed-in user may look up a family by
+-- parent email so a caregiver can adopt the parent's canonical child_name
+-- (and therefore the same link_key) before they are a member.
+drop policy if exists "families select lookup" on public.families;
+create policy "families select lookup" on public.families for select
+  using (auth.uid() is not null);
 
 -- family_members: see own family, join as yourself, leave as yourself
 drop policy if exists "members select own family" on public.family_members;

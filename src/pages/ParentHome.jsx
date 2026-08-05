@@ -34,23 +34,34 @@ export default function ParentHome() {
   }, [linkKey, currentUser?.uid]);
 
   useEffect(() => {
-    if (!linkKey) { setActivities([]); setLoading(false); return; }
+    if (!linkKey) { setActivities([]); setEmergencyAlerts([]); setLoading(false); return; }
+    let cancelled = false;
+
+    const refresh = () => {
+      getAllActivities(linkKey).then((data) => {
+        if (cancelled) return;
+        setActivities(data);
+        setLoading(false);
+        setError(false);
+      }).catch(() => {
+        if (!cancelled) {
+          setLoading(false);
+          setError(true);
+        }
+      });
+      getEmergencyAlerts(linkKey).then((alerts) => {
+        if (!cancelled) setEmergencyAlerts(alerts);
+      }).catch(() => {
+        if (!cancelled) setEmergencyAlerts([]);
+      });
+    };
+
     setActivities([]);
     setLoading(true);
     setError(false);
-    getAllActivities(linkKey).then((data) => {
-      setActivities(data);
-      setLoading(false);
-      setError(false);
-    }).catch(() => {
-      setLoading(false);
-      setError(true);
-    });
-    getEmergencyAlerts(linkKey).then((alerts) => {
-      setEmergencyAlerts(alerts);
-    }).catch(() => {
-      setEmergencyAlerts([]);
-    });
+    refresh();
+    const interval = setInterval(refresh, 20000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [linkKey]);
 
   const h = new Date().getHours();

@@ -6,10 +6,12 @@ import { getAppVersion } from '../utils/updateManager';
 import { getAllActivities } from '../services/demoLogger';
 
 export default function Profile() {
-  const { currentUser, userRole, logout, linkKey } = useAuth();
+  const { currentUser, userRole, logout, linkKey, updateProfile, userProfile } = useAuth();
   const toast = useToast();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
   const [stats, setStats] = useState({ daysActive: '—', logs: '—' });
   const [careTeam, setCareTeam] = useState([
     { name: 'Sarah M.', role: 'Primary Caregiver', initials: 'SM' },
@@ -36,13 +38,28 @@ export default function Profile() {
     });
   }, [linkKey]);
 
-  const settingsItems = [
-    { icon: 'notifications', label: 'Notifications', subtitle: 'Alert preferences' },
-    { icon: 'lock', label: 'Privacy & Security', subtitle: 'Password, 2FA' },
-    { icon: 'language', label: 'Language', subtitle: 'English' },
-    { icon: 'help', label: 'Help & Support', subtitle: 'FAQ, contact' },
-    { icon: 'info', label: 'About', subtitle: `v${getAppVersion()}` },
-  ];
+  const savedPhone = (() => { try { return localStorage.getItem('careconnect-phone') || ''; } catch { return ''; } })();
+  const displayName = userProfile?.name || userName;
+
+  function openEditProfile() {
+    setEditName(displayName);
+    setEditPhone(savedPhone);
+    setShowEditProfile(true);
+  }
+
+  async function saveProfile() {
+    const name = editName.trim();
+    if (name && name !== displayName && currentUser) {
+      try {
+        await updateProfile({ name });
+      } catch (e) {
+        console.error('Failed to save name:', e);
+      }
+    }
+    try { localStorage.setItem('careconnect-phone', editPhone.trim()); } catch { /* silent */ }
+    setShowEditProfile(false);
+    toast.success('Profile updated');
+  }
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -64,11 +81,11 @@ export default function Profile() {
         <div className="relative w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-3">
           <span className="material-symbols-outlined text-on-primary text-[32px]">person</span>
         </div>
-        <h2 className="text-lg font-bold text-on-surface">{userName}</h2>
+        <h2 className="text-lg font-bold text-on-surface">{displayName}</h2>
         <p className="text-sm text-on-surface-variant capitalize mt-0.5">{userRole}</p>
         <p className="text-xs text-outline mt-1">{currentUser?.email}</p>
         <button
-          onClick={() => setShowEditProfile(true)}
+          onClick={openEditProfile}
           className="mt-3 px-5 py-2 rounded-xl bg-surface-container-low text-sm font-semibold text-on-surface card-interactive hover:bg-surface-container transition-colors"
         >
           <span className="flex items-center gap-1.5">
@@ -79,7 +96,7 @@ export default function Profile() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 animate-fade-in-up" style={{ animationDelay: '0.03s' }}>
+      <div className="grid grid-cols-2 gap-2 animate-fade-in-up" style={{ animationDelay: '0.03s' }}>
         {[
           { label: 'Days Active', value: stats.daysActive, icon: 'calendar_today' },
           { label: 'Logs', value: stats.logs, icon: 'edit_note' },
@@ -218,18 +235,18 @@ export default function Profile() {
             <div className="flex flex-col gap-3">
               <div>
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">Full Name</label>
-                <input defaultValue={userName} className="glass-input" placeholder="Enter your name" />
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} className="glass-input" placeholder="Enter your name" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">Email</label>
-                <input defaultValue={currentUser?.email} className="glass-input" placeholder="email@example.com" />
+                <input value={currentUser?.email || ''} disabled className="glass-input opacity-60" placeholder="email@example.com" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">Phone</label>
-                <input placeholder="(555) 000-0000" className="glass-input" type="tel" />
+                <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="(555) 000-0000" className="glass-input" type="tel" />
               </div>
               <button
-                onClick={() => { setShowEditProfile(false); toast.success('Profile updated'); }}
+                onClick={saveProfile}
                 className="w-full bg-primary text-on-primary py-3 rounded-xl font-semibold text-base mt-1 card-interactive"
               >
                 Save Changes

@@ -120,6 +120,9 @@ export default function App() {
                   <Route path="/parent/calendar" element={
                     <Page><RoleGate><Calendar /></RoleGate></Page>
                   } />
+                  <Route path="/caregiver/calendar" element={
+                    <Page><RoleGate><Calendar /></RoleGate></Page>
+                  } />
                   <Route path="/parent/tracking" element={
                     <Page><RoleGate><TrackingMap /></RoleGate></Page>
                   } />

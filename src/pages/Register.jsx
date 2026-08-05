@@ -9,6 +9,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [accountCreated, setAccountCreated] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
 
@@ -29,13 +30,38 @@ export default function Register() {
         navigate('/role-selection');
       } else {
         // Email confirmation is enabled — user must verify before signing in.
-        setError('Account created! Check your email to confirm, then sign in.');
+        setAccountCreated(true);
       }
     } catch (err) {
       const msg = (err && err.message) || '';
       setError(msg.includes('already registered') ? 'An account with this email already exists' : 'Failed to create account');
     }
     setLoading(false);
+  }
+
+  if (accountCreated) {
+    return (
+      <div className="auth-page bg-surface">
+        <div className="w-full max-w-sm animate-fade-in-up text-center">
+          <div className="w-14 h-14 bg-health/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span className="material-symbols-outlined text-health text-[28px]">mark_email_read</span>
+          </div>
+          <h1 className="text-2xl font-bold text-on-surface mb-2">Almost there!</h1>
+          <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
+            We sent a confirmation link to <span className="font-semibold text-on-surface">{email}</span>.
+            Open it to activate your account, then come back and sign in.
+          </p>
+          <div className="flex flex-col gap-2">
+            <button onClick={() => navigate('/login')} className="auth-button">
+              Go to Sign In
+            </button>
+            <button onClick={() => setAccountCreated(false)} className="text-sm text-primary font-semibold py-2">
+              Use a different email
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

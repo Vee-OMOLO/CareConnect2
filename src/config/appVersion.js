@@ -1,10 +1,52 @@
 // Single source of truth for the app version shown in the UI and used for
 // update detection. Keep in sync with package.json and public/version.json.
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.3.0';
 
 // Changelog shown once per version in the "What's New" sheet.
 // Each entry: { icon, title, description }
 export const CHANGELOG = {
+  '1.3.0': [
+    {
+      icon: 'verified_user',
+      title: 'Clear sign-in, all the way through',
+      description: 'Login now explains every situation — unconfirmed email, wrong password, unknown account — and you can reset a forgotten password right from the sign-in screen.',
+    },
+    {
+      icon: 'family_restroom',
+      title: 'Joining a family now actually works',
+      description: 'Caregivers can find and join the parent\u2019s family without hitting permission errors, so shared logs, alerts, and events sync between both accounts.',
+    },
+    {
+      icon: 'live_tv',
+      title: 'Live data, no refresh needed',
+      description: 'Dashboards and the calendar now refresh automatically, so a new log from the caregiver shows up on the parent\u2019s screen within seconds.',
+    },
+    {
+      icon: 'location_on',
+      title: 'GPS tracking fixed — parents see the caregiver',
+      description: 'Caregivers share their live location to the linked family; parents now watch the caregiver\u2019s position instead of their own.',
+    },
+    {
+      icon: 'calendar_month',
+      title: 'Caregivers get the calendar',
+      description: 'The caregiver app finally links to the family calendar for viewing and adding events.',
+    },
+    {
+      icon: 'shield',
+      title: 'Safety Vault contacts sync to the cloud',
+      description: 'Emergency contacts are shared with the linked family and survive device switches instead of living only on one phone.',
+    },
+    {
+      icon: 'account_circle',
+      title: 'Edit Profile actually saves',
+      description: 'Your name and phone now save for real, and switching accounts never leaks one person\u2019s family into another\u2019s session.',
+    },
+    {
+      icon: 'add_a_photo',
+      title: 'Photos work without extra setup',
+      description: 'If Cloudinary isn\u2019t configured, photos are still attached to logs by compressing them on your device.',
+    },
+  ],
   '1.2.0': [
     {
       icon: 'database',

@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast';
 import { SkeletonMap } from '../components/Skeleton';
 import { useAuth } from '../contexts/AuthContext';
 import { startLocationTracking, stopLocationTracking } from '../services/locationService';
+import { subscribeToFamilyLocation } from '../services/supabaseService';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -34,15 +35,44 @@ function LocationUpdater({ position }) {
   return null;
 }
 
+function formatTime(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
+
 export default function TrackingMap() {
   const [position, setPosition] = useState(null);
   const [watching, setWatching] = useState(false);
   const [error, setError] = useState('');
+  const [familyPosition, setFamilyPosition] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const watchIdRef = useRef(null);
   const toast = useToast();
-  const { currentUser } = useAuth();
+  const { currentUser, userRole, linkKey } = useAuth();
+  const isParent = userRole === 'parent';
 
   useEffect(() => {
+    if (isParent) {
+      // Parent watches the caregiver's live location for the linked family.
+      if (!linkKey) {
+        setError('Link a family first to see the caregiver\'s live location.');
+        setPosition(defaultPosition);
+        return;
+      }
+      const cleanup = subscribeToFamilyLocation(linkKey, (loc) => {
+        if (loc && loc.lat != null && loc.lng != null) {
+          setFamilyPosition([loc.lat, loc.lng]);
+          setLastUpdated(loc.updated_at || loc.timestamp || null);
+        }
+      });
+      return () => cleanup();
+    }
+
+    // Caregiver: load their own current position for the map view.
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setPosition([pos.coords.latitude, pos.coords.longitude]),
@@ -54,7 +84,7 @@ export default function TrackingMap() {
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
       stopLocationTracking();
     };
-  }, []);
+  }, [isParent, linkKey]);
 
   function toggleTracking() {
     if (watching) {
@@ -63,8 +93,8 @@ export default function TrackingMap() {
       setWatching(false);
       toast.success('Location sharing stopped');
     } else if (navigator.geolocation) {
-      // Persist location to Supabase (doc keyed by caregiver uid)
-      startLocationTracking(currentUser?.uid || 'unknown');
+      // Persist location to Supabase keyed by caregiver uid + family link_key.
+      startLocationTracking(currentUser?.uid || 'unknown', linkKey || undefined);
 
       watchIdRef.current = navigator.geolocation.watchPosition(
         (pos) => setPosition([pos.coords.latitude, pos.coords.longitude]),
@@ -77,31 +107,36 @@ export default function TrackingMap() {
   }
 
   function copyMapsLink() {
-    if (position) {
-      navigator.clipboard.writeText(`https://www.google.com/maps?q=${position[0]},${position[1]}`);
+    const pos = displayPosition;
+    if (pos) {
+      navigator.clipboard.writeText(`https://www.google.com/maps?q=${pos[0]},${pos[1]}`);
       toast.success('Location link copied!');
     }
   }
 
+  const displayPosition = isParent ? (familyPosition || position || defaultPosition) : position;
+
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title="GPS Tracking" subtitle="Real-time location" onBack />
+      <PageHeader title="GPS Tracking" subtitle={isParent ? 'Caregiver live location' : 'Real-time location'} onBack />
 
-      {/* Toggle */}
-      <div className="card p-4 animate-fade-in-up">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${watching ? 'bg-health-bg' : 'bg-surface-container-low'}`}>
-              <span className={`material-symbols-outlined ${watching ? 'text-health' : 'text-outline'} text-[20px]`}>location_on</span>
+      {/* Toggle — only the caregiver shares their location */}
+      {!isParent && (
+        <div className="card p-4 animate-fade-in-up">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${watching ? 'bg-health-bg' : 'bg-surface-container-low'}`}>
+                <span className={`material-symbols-outlined ${watching ? 'text-health' : 'text-outline'} text-[20px]`}>location_on</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-on-surface">Live Tracking</p>
+                <p className="text-xs text-outline">{watching ? 'Active' : 'Tap to start'}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-on-surface">Live Tracking</p>
-              <p className="text-xs text-outline">{watching ? 'Active' : 'Tap to start'}</p>
-            </div>
+            <Toggle checked={watching} onChange={toggleTracking} />
           </div>
-          <Toggle checked={watching} onChange={toggleTracking} />
         </div>
-      </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 bg-medicine-bg px-3 py-2 rounded-xl text-sm font-medium text-medicine animate-fade-in-up">
@@ -111,32 +146,38 @@ export default function TrackingMap() {
       )}
 
       {/* Map */}
-      {!position ? (
+      {!displayPosition ? (
         <SkeletonMap />
       ) : (
         <div className="rounded-xl overflow-hidden animate-scale-in" style={{ height: 'clamp(200px, 40vw, 400px)' }}>
           <MapContainer
-            center={position}
+            center={displayPosition}
             zoom={18}
             style={{ height: '100%', width: '100%' }}
             zoomControl={false}
           >
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <Marker position={position} icon={caregiverIcon}>
-              <Popup><div className="text-center text-sm"><strong>Caregiver</strong><br />{position[0].toFixed(6)}, {position[1].toFixed(6)}</div></Popup>
+            <Marker position={displayPosition} icon={caregiverIcon}>
+              <Popup>
+                <div className="text-center text-sm">
+                  <strong>{isParent ? 'Caregiver' : 'You'}</strong>
+                  <br />{displayPosition[0].toFixed(6)}, {displayPosition[1].toFixed(6)}
+                  {isParent && lastUpdated && <><br /><span className="text-outline text-xs">Updated {formatTime(lastUpdated)}</span></>}
+                </div>
+              </Popup>
             </Marker>
-            <LocationUpdater position={position} />
+            <LocationUpdater position={displayPosition} />
           </MapContainer>
         </div>
       )}
 
       {/* Coordinates */}
-      {position && (
+      {displayPosition && (
         <div className="card p-3 animate-fade-in-up">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
               <p className="text-[11px] text-outline font-medium">Coordinates</p>
-              <p className="text-sm font-mono font-semibold text-on-surface truncate">{position[0].toFixed(6)}, {position[1].toFixed(6)}</p>
+              <p className="text-sm font-mono font-semibold text-on-surface truncate">{displayPosition[0].toFixed(6)}, {displayPosition[1].toFixed(6)}</p>
             </div>
             <button onClick={copyMapsLink} className="px-3 py-1.5 rounded-lg bg-surface-container-low text-xs font-semibold text-on-surface card-interactive flex-shrink-0">Copy</button>
           </div>
@@ -146,15 +187,21 @@ export default function TrackingMap() {
       {/* Sharing status */}
       <div className="card p-4 animate-fade-in-up" style={{ animationDelay: '0.06s' }}>
         <div className="flex items-start gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${watching ? 'bg-health-bg' : 'bg-surface-container-low'}`}>
-            <span className={`material-symbols-outlined text-[20px] ${watching ? 'text-health' : 'text-outline'}`}>cloud_sync</span>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isParent ? 'bg-surface-container-low' : (watching ? 'bg-health-bg' : 'bg-surface-container-low')}`}>
+            <span className={`material-symbols-outlined text-[20px] ${isParent ? 'text-primary' : (watching ? 'text-health' : 'text-outline')}`}>cloud_sync</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-on-surface">Location sharing</p>
+            <p className="text-sm font-semibold text-on-surface">
+              {isParent ? 'Caregiver location' : 'Location sharing'}
+            </p>
             <p className="text-xs text-outline mt-0.5 leading-relaxed">
-              {watching
-                ? 'Your live location is being saved securely to the linked family. Updates every ~10 seconds while active.'
-                : 'Start live tracking to share your location with the linked family. Positions are saved to Supabase (doc keyed by your account).'}
+              {isParent
+                ? (familyPosition
+                  ? `Showing the caregiver's live position for your linked family${lastUpdated ? ` (last update ${formatTime(lastUpdated)})` : ''}.`
+                  : 'Waiting for the caregiver to start sharing their location. Updates appear here automatically.')
+                : (watching
+                  ? 'Your live location is being saved securely to the linked family. Updates every ~10 seconds while active.'
+                  : 'Start live tracking to share your location with the linked family. Positions are saved to Supabase keyed by your account and family link.')}
             </p>
           </div>
         </div>

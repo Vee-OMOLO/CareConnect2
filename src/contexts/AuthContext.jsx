@@ -34,21 +34,34 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, password) {
+    // Starting a fresh sign-in: drop any role/link state persisted by a
+    // previous account on this device so it can't leak into the new session.
+    clearLocalSessionState();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return data;
   }
 
-  async function logout() {
+  async function sendPasswordReset(email) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+  }
+
+  function clearLocalSessionState() {
     setUserRole(null);
     setUserProfile(null);
     setChildName('');
     setParentEmailState('');
-    setCurrentUser(null);
-    setAccountVersion(v => v + 1);
     localStorage.removeItem('careconnect-role');
     localStorage.removeItem('careconnect-child');
     localStorage.removeItem('careconnect-parent-email');
+    localStorage.removeItem('careconnect-auth-uid');
+  }
+
+  async function logout() {
+    clearLocalSessionState();
+    setCurrentUser(null);
+    setAccountVersion(v => v + 1);
     await supabase.auth.signOut();
   }
 
@@ -145,12 +158,10 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    const savedRole = localStorage.getItem('careconnect-role');
-    const savedChild = localStorage.getItem('careconnect-child');
-    const savedParentEmail = localStorage.getItem('careconnect-parent-email');
-    if (savedRole) setUserRole(savedRole);
-    if (savedChild) setChildName(savedChild);
-    if (savedParentEmail) setParentEmailState(savedParentEmail);
+    // If a previous account left role/link state on this device, only apply
+    // it when the logged-in user is the same one who saved it. Otherwise the
+    // state belongs to another account and must not leak into this session.
+    const savedUid = localStorage.getItem('careconnect-auth-uid');
 
     // Supabase session persistence is handled by supabase-js; this listener
     // keeps React state in sync with sign-in/sign-out/refresh events.
@@ -158,6 +169,21 @@ export function AuthProvider({ children }) {
       const user = session?.user || null;
       setCurrentUser(user ? { uid: user.id, email: user.email, ...user } : null);
       if (user) {
+        localStorage.setItem('careconnect-auth-uid', user.id);
+        if (savedUid && savedUid !== user.id) {
+          // Different account on this device — never apply the old account's
+          // saved role/child/parent email to this user.
+          localStorage.removeItem('careconnect-role');
+          localStorage.removeItem('careconnect-child');
+          localStorage.removeItem('careconnect-parent-email');
+        } else {
+          const savedRole = localStorage.getItem('careconnect-role');
+          const savedChild = localStorage.getItem('careconnect-child');
+          const savedParentEmail = localStorage.getItem('careconnect-parent-email');
+          if (savedRole) setUserRole(savedRole);
+          if (savedChild) setChildName(savedChild);
+          if (savedParentEmail) setParentEmailState(savedParentEmail);
+        }
         loadProfile(user.id);
       }
       setLoading(false);
@@ -176,6 +202,7 @@ export function AuthProvider({ children }) {
     accountVersion,
     signup,
     login,
+    sendPasswordReset,
     logout,
     setRole,
     setChild,

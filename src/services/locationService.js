@@ -2,33 +2,27 @@ import { saveCaregiverLocation } from './supabaseService';
 
 let watchId = null;
 
-// Start watching position and save to Firestore
-export function startLocationTracking(caregiverId) {
+// Start watching position and saving it to Supabase (with the family link so
+// the parent can read the caregiver's live location).
+export function startLocationTracking(caregiverId, linkKey) {
   if (!navigator.geolocation) {
     console.error('Geolocation not supported');
     return;
   }
 
+  const save = (position) => {
+    saveCaregiverLocation(caregiverId, linkKey, {
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+    });
+  };
+
   // Get initial position
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      saveCaregiverLocation(caregiverId, {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      });
-    },
-    (error) => console.error('Location error:', error),
-    { enableHighAccuracy: true }
-  );
+  navigator.geolocation.getCurrentPosition(save, (error) => console.error('Location error:', error), { enableHighAccuracy: true });
 
   // Watch position changes
   watchId = navigator.geolocation.watchPosition(
-    (position) => {
-      saveCaregiverLocation(caregiverId, {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      });
-    },
+    save,
     (error) => console.error('Watch position error:', error),
     {
       enableHighAccuracy: true,

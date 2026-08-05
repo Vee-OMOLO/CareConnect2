@@ -194,13 +194,20 @@ export function subscribeToEvents(linkKey, callback, onError) {
   };
 }
 
-// Save caregiver location (upsert — one row per caregiver)
-export async function saveCaregiverLocation(caregiverId, location) {
+// Save caregiver location (upsert — one row per caregiver).
+// link_key links the row to the family so the parent can read it back.
+export async function saveCaregiverLocation(caregiverId, linkKey, location) {
   try {
     const { error } = await supabase
       .from('caregiver_locations')
       .upsert(
-        { caregiver_id: caregiverId, lat: location.lat, lng: location.lng, updated_at: new Date().toISOString() },
+        {
+          caregiver_id: caregiverId,
+          link_key: linkKey || null,
+          lat: location.lat,
+          lng: location.lng,
+          updated_at: new Date().toISOString(),
+        },
         { onConflict: 'caregiver_id' }
       );
     if (error) throw error;
@@ -240,22 +247,93 @@ export function subscribeToCaregiverLocation(caregiverId, callback) {
   };
 }
 
-// Save emergency contacts
-export async function saveEmergencyContacts(linkKey, contacts) {
+// Parent: subscribe to the most recent caregiver location for the family.
+// Caregivers write with link_key set; the parent reads by link_key.
+export function subscribeToFamilyLocation(linkKey, callback) {
+  let active = true;
+  const sb = supabase;
+
+  const load = async () => {
+    try {
+      const { data, error } = await sb
+        .from('caregiver_locations')
+        .select('*')
+        .eq('link_key', linkKey)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (active && data) callback(mapRow(data));
+    } catch (e) {
+      console.error('Family location subscription error:', e);
+    }
+  };
+
+  load();
+  const channel = sb
+    .channel(`family-loc-${linkKey}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'caregiver_locations', filter: `link_key=eq.${linkKey}` }, load)
+    .subscribe();
+
+  const poll = setInterval(load, 30000);
+
+  return () => {
+    active = false;
+    clearInterval(poll);
+    sb.removeChannel(channel);
+  };
+}
+
+// --- emergency contacts (cloud-synced) --------------------------------------
+
+// Load emergency contacts for a family (falling back to a caregiver's local save)
+export async function getEmergencyContacts(linkKey) {
   try {
-    const rows = (contacts || []).map((c) => ({
-      link_key: linkKey,
-      child_id: linkKey,
-      name: c.name || null,
-      relationship: c.role || c.relationship || null,
-      phone: c.phone || null,
-      is_primary: Boolean(c.isPrimary),
-    }));
-    if (rows.length === 0) return;
-    const { error } = await supabase.from('emergency_contacts').insert(rows);
+    const { data, error } = await supabase
+      .from('emergency_contacts')
+      .select('*')
+      .eq('link_key', linkKey)
+      .order('is_primary', { ascending: false });
     if (error) throw error;
+    return (data || []).map((c) => ({
+      id: c.id,
+      name: c.name || '',
+      role: c.relationship || '',
+      phone: c.phone || '',
+      isPrimary: Boolean(c.is_primary),
+    }));
   } catch (e) {
-    console.error('Error saving contacts:', e);
+    console.error('Error loading contacts:', e);
+    return null;
+  }
+}
+
+// Replace the family's contact list with the given contacts (delete + insert)
+export async function syncEmergencyContacts(linkKey, contacts) {
+  try {
+    const sb = supabase;
+    const { error: delError } = await sb
+      .from('emergency_contacts')
+      .delete()
+      .eq('link_key', linkKey);
+    if (delError) throw delError;
+
+    const rows = (contacts || [])
+      .filter((c) => c && (c.name || c.phone))
+      .map((c) => ({
+        link_key: linkKey,
+        child_id: linkKey,
+        name: c.name || null,
+        relationship: c.role || c.relationship || null,
+        phone: c.phone || null,
+        is_primary: Boolean(c.isPrimary),
+      }));
+    if (rows.length === 0) return;
+
+    const { error: insError } = await sb.from('emergency_contacts').insert(rows);
+    if (insError) throw insError;
+  } catch (e) {
+    console.error('Error syncing contacts:', e);
   }
 }
 
@@ -302,18 +380,30 @@ export async function saveUserProfile(uid, data) {
 // Deep-link logic: always look up the parent's family by email first.
 // If the parent already has a family, the caregiver joins THAT family
 // (using the parent's child_name) so both users share the same linkKey.
+//
+// RLS note: non-members can't UPDATE an existing family row, so the family
+// upsert uses ON CONFLICT DO NOTHING (ignoreDuplicates). Creating a family
+// is an INSERT; joining an existing one never touches the existing row.
 export async function ensureFamily(linkKey, { userUid, role, childName, parentEmail }) {
   try {
     const sb = supabase;
     const email = (parentEmail || '').trim().toLowerCase();
 
     // Step 1: Check if the parent already has a family by email
-    let { data: existing } = await sb
-      .from('families')
-      .select('*')
-      .ilike('parent_email', email)
-      .limit(1)
-      .maybeSingle();
+    let existing = null;
+    try {
+      const { data } = await sb
+        .from('families')
+        .select('*')
+        .ilike('parent_email', email)
+        .limit(1)
+        .maybeSingle();
+      existing = data;
+    } catch (e) {
+      // Non-member lookups may be blocked by RLS without the lookup policy;
+      // fall through and rely on exact child_name matching instead.
+      console.warn('Family lookup unavailable:', e?.message);
+    }
 
     // Step 2: If parent's family exists, always use its child_name (canonical source)
     let finalChildName = childName;
@@ -323,33 +413,33 @@ export async function ensureFamily(linkKey, { userUid, role, childName, parentEm
       finalLinkKey = buildLinkKey(email, existing.child_name);
     }
 
-    // Step 3: Upsert the family with the canonical child_name
-    const { data: fam, error: famError } = await sb
+    // Step 3: Upsert the family with the canonical child_name.
+    // ignoreDuplicates = ON CONFLICT DO NOTHING: joining an existing family
+    // is a no-op here (no UPDATE policy needed); creating is a plain INSERT.
+    const { error: famError } = await sb
       .from('families')
       .upsert(
         {
           link_key: finalLinkKey,
           child_name: finalChildName || null,
           parent_email: email || null,
-          parent_uid: role === 'parent' ? userUid : (existing?.parent_uid || undefined),
+          parent_uid: role === 'parent' ? userUid : (existing?.parent_uid || null),
           updated_at: new Date().toISOString(),
         },
-        { onConflict: 'link_key' }
-      )
-      .select('link_key')
-      .single();
+        { onConflict: 'link_key', ignoreDuplicates: true }
+      );
     if (famError) throw famError;
 
-    // Step 4: Add this user as a family member
+    // Step 4: Add this user as a family member (insert only — no update policy needed)
     const { error: memError } = await sb
       .from('family_members')
       .upsert(
-        { link_key: fam.link_key, user_uid: userUid, role: role || null },
-        { onConflict: 'link_key,user_uid' }
+        { link_key: finalLinkKey, user_uid: userUid, role: role || null },
+        { onConflict: 'link_key,user_uid', ignoreDuplicates: true }
       );
     if (memError) throw memError;
 
-    return fam.link_key;
+    return finalLinkKey;
   } catch (e) {
     console.error('Error ensuring family:', e);
     return null;
