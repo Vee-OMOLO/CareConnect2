@@ -193,6 +193,12 @@ create policy "families select lookup" on public.families for select
 drop policy if exists "members select own family" on public.family_members;
 create policy "members select own family" on public.family_members for select
   using (public.is_family_member(link_key));
+-- Also allow seeing your own membership row. This matters because PostgREST
+-- wraps inserts with `return=representation` in a SELECT that must satisfy a
+-- SELECT policy — without it, the first member could not join (42501).
+drop policy if exists "members select self" on public.family_members;
+create policy "members select self" on public.family_members for select
+  using (user_uid = auth.uid());
 drop policy if exists "members insert self" on public.family_members;
 create policy "members insert self" on public.family_members for insert
   with check (user_uid = auth.uid());
